@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecAudit — Auditoría de Seguridad</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+    :root {
+      --bg:#07010100;--bg:#06000000;--bg:#050000;--bg2:#0c0202;--bg3:#120404;
+      --red:#ef5350;--red2:#e53935;--red3:#b71c1c;
+      --red-glow:rgba(239,83,80,0.15);
+      --orange:#ff7043;--yellow:#ffd740;
+      --green:#69f0ae;--green2:#00c853;
+      --blue:#42a5f5;
+      --muted:#5d2626;--muted2:#7d3c3c;
+      --text:#ffcdd2;--text2:#fff;
+      --card:rgba(239,83,80,0.04);--border:rgba(239,83,80,0.12);
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+
+    /* Subtle red vignette */
+    body::after{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:radial-gradient(ellipse at 50% 0%,rgba(183,28,28,0.08) 0%,transparent 60%);
+    }
+
+    /* TOPBAR */
+    .topbar{
+      background:rgba(5,0,0,0.98);border-bottom:1px solid var(--border);
+      height:54px;display:flex;align-items:center;justify-content:space-between;
+      padding:0 24px;position:sticky;top:0;z-index:100;
+    }
+    .logo{display:flex;align-items:center;gap:10px;}
+    .logo-box{
+      width:30px;height:30px;border-radius:7px;
+      background:linear-gradient(135deg,var(--red3),var(--red2));
+      display:flex;align-items:center;justify-content:center;font-size:0.9rem;
+      box-shadow:0 0 12px rgba(183,28,28,0.4);
+    }
+    .logo-name{font-size:1rem;font-weight:700;color:var(--text2);letter-spacing:.5px;}
+    .logo-sub{font-size:0.7rem;color:var(--muted2);margin-left:4px;font-family:'JetBrains Mono',monospace;}
+    .topbar-right{display:flex;align-items:center;gap:12px;}
+    .target-chip{
+      font-size:0.72rem;padding:4px 12px;border-radius:20px;
+      font-family:'JetBrains Mono',monospace;
+      background:rgba(239,83,80,0.08);border:1px solid rgba(239,83,80,0.2);color:var(--red);
+    }
+    .score-chip{
+      font-size:0.72rem;padding:4px 14px;border-radius:20px;font-weight:700;
+      font-family:'JetBrains Mono',monospace;
+    }
+    .score-low{background:rgba(105,240,174,0.1);border:1px solid rgba(105,240,174,0.25);color:var(--green);}
+    .score-mid{background:rgba(255,215,64,0.1);border:1px solid rgba(255,215,64,0.25);color:var(--yellow);}
+    .score-high{background:rgba(239,83,80,0.1);border:1px solid rgba(239,83,80,0.3);color:var(--red);}
+    .topbar-time{font-size:0.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
+
+    /* LAYOUT */
+    .layout{flex:1;padding:20px;display:grid;grid-template-columns:1fr 310px;gap:16px;position:relative;z-index:1;}
+    .left{display:flex;flex-direction:column;gap:14px;}
+    .right{display:flex;flex-direction:column;gap:14px;}
+    .sec-label{font-size:0.67rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:12px;font-family:'JetBrains Mono',monospace;}
+
+    /* SCAN HERO */
+    .scan-hero{
+      background:linear-gradient(135deg,#0c0202 0%,#120404 100%);
+      border:1px solid var(--border);border-radius:16px;padding:24px;
+      display:flex;align-items:center;gap:24px;
+    }
+    .shield-wrap{position:relative;flex-shrink:0;}
+    .shield-ring{
+      width:110px;height:110px;border-radius:50%;
+      border:2px solid rgba(239,83,80,0.2);
+      display:flex;align-items:center;justify-content:center;
+      position:relative;
+    }
+    .shield-ring::before{
+      content:'';position:absolute;inset:-6px;border-radius:50%;
+      border:1px solid rgba(239,83,80,0.08);
+    }
+    .shield-score{
+      text-align:center;
+    }
+    .score-big{font-size:2.2rem;font-weight:900;font-family:'JetBrains Mono',monospace;line-height:1;}
+    .score-sub{font-size:0.65rem;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;}
+    .scan-info{flex:1;}
+    .scan-title{font-size:1.3rem;font-weight:800;color:var(--text2);margin-bottom:6px;}
+    .scan-desc{font-size:0.88rem;color:var(--muted2);line-height:1.7;margin-bottom:16px;}
+    .scan-input-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .target-input{
+      flex:1;min-width:180px;background:rgba(239,83,80,0.04);
+      border:1px solid rgba(239,83,80,0.18);border-radius:8px;
+      padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;
+      font-size:0.85rem;outline:none;transition:.15s;
+    }
+    .target-input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(239,83,80,0.08);}
+    .target-input::placeholder{color:var(--muted);}
+    .btn-scan{
+      background:var(--red2);color:#fff;padding:9px 22px;border:none;border-radius:8px;
+      font-weight:700;font-size:0.88rem;cursor:pointer;transition:.2s;white-space:nowrap;
+    }
+    .btn-scan:hover{background:var(--red);box-shadow:0 0 20px rgba(239,83,80,0.35);}
+    .btn-scan:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
+    .btn-stop{background:transparent;border:1px solid rgba(255,112,67,.4);color:var(--orange);padding:9px 18px;border-radius:8px;cursor:pointer;font-size:0.88rem;transition:.2s;display:none;}
+    .btn-stop:hover{background:rgba(255,112,67,.1);}
+    .scan-progress{margin-top:14px;display:none;}
+    .prog-track{background:rgba(239,83,80,0.08);border-radius:3px;height:4px;overflow:hidden;}
+    .prog-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--red3),var(--red),var(--orange));transition:width .5s;}
+    .prog-label{display:flex;justify-content:space-between;font-size:0.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:5px;}
+
+    /* RISK SCORE BAR */
+    .risk-bar-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;}
+    .risk-items{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+    .risk-item{background:rgba(239,83,80,0.03);border:1px solid rgba(239,83,80,0.08);border-radius:10px;padding:12px;text-align:center;}
+    .risk-val{font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;margin-bottom:3px;}
+    .risk-label{font-size:0.65rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;}
+
+    /* FINDINGS TABLE */
+    .findings-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+    .findings-header{display:grid;grid-template-columns:80px 1fr 80px 90px 100px;padding:10px 16px;background:rgba(239,83,80,0.05);border-bottom:1px solid var(--border);}
+    .fh{font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
+    .findings-body{max-height:300px;overflow-y:auto;}
+    .finding-row{
+      display:grid;grid-template-columns:80px 1fr 80px 90px 100px;
+      padding:11px 16px;border-bottom:1px solid rgba(239,83,80,0.05);
+      align-items:center;animation:fadeIn .3s ease;
+    }
+    @keyframes fadeIn{from{opacity:0;background:rgba(239,83,80,0.08);}to{opacity:1;background:transparent;}}
+    .finding-row:hover{background:rgba(239,83,80,0.04);}
+    .sev{display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:700;font-family:'JetBrains Mono',monospace;}
+    .sev-crit{color:#ff1744;}
+    .sev-high{color:var(--red);}
+    .sev-med{color:var(--yellow);}
+    .sev-low{color:var(--green);}
+    .sev-info{color:var(--blue);}
+    .f-title{font-size:0.85rem;color:var(--text);font-weight:500;}
+    .f-cat{font-size:0.72rem;color:var(--muted2);margin-top:2px;}
+    .f-score{font-family:'JetBrains Mono',monospace;font-size:0.82rem;font-weight:700;}
+    .f-port{font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--muted2);}
+    .status-badge{font-size:0.68rem;padding:2px 8px;border-radius:8px;font-weight:600;border:1px solid;}
+    .sb-open{color:var(--red);background:rgba(239,83,80,0.08);border-color:rgba(239,83,80,0.2);}
+    .sb-patched{color:var(--green);background:rgba(105,240,174,0.08);border-color:rgba(105,240,174,0.2);}
+    .sb-info{color:var(--blue);background:rgba(66,165,245,0.08);border-color:rgba(66,165,245,0.2);}
+    .empty-findings{padding:40px;text-align:center;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:0.8rem;}
+
+    /* RIGHT SIDEBAR */
+    .terminal{background:#030000;border:1px solid rgba(239,83,80,0.12);border-radius:14px;overflow:hidden;}
+    .term-hdr{background:rgba(239,83,80,0.05);border-bottom:1px solid var(--border);padding:9px 14px;display:flex;align-items:center;justify-content:space-between;}
+    .term-dots{display:flex;gap:5px;}
+    .td2{width:9px;height:9px;border-radius:50%;}
+    .term-title{font-size:0.68rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;letter-spacing:1px;}
+    .term-body{padding:12px;height:260px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.7rem;display:flex;flex-direction:column;gap:2px;}
+    .tl{display:flex;gap:6px;line-height:1.7;}
+    .tl-ts{color:rgba(239,83,80,0.25);flex-shrink:0;}
+    .tl-crit{color:#ff1744;font-weight:700;}
+    .tl-high{color:var(--red);}
+    .tl-med{color:var(--yellow);}
+    .tl-ok{color:var(--green);}
+    .tl-info{color:var(--blue);}
+    .tl-dim{color:var(--muted2);}
+
+    /* CHECKLIST */
+    .check-list{display:flex;flex-direction:column;gap:6px;}
+    .check-item{
+      display:flex;align-items:center;gap:10px;padding:8px 12px;
+      border-radius:8px;background:rgba(239,83,80,0.03);border:1px solid rgba(239,83,80,0.07);
+    }
+    .check-icon{font-size:0.9rem;flex-shrink:0;width:18px;text-align:center;}
+    .check-name{font-size:0.8rem;color:var(--text);flex:1;}
+    .check-result{font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:6px;}
+    .cr-pass{color:var(--green);background:rgba(105,240,174,0.08);border:1px solid rgba(105,240,174,0.15);}
+    .cr-fail{color:var(--red);background:rgba(239,83,80,0.08);border:1px solid rgba(239,83,80,0.15);}
+    .cr-warn{color:var(--yellow);background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.15);}
+    .cr-pending{color:var(--muted2);background:transparent;border:1px solid rgba(255,255,255,0.06);}
+
+    /* PDF BUTTON */
+    .btn-pdf{
+      width:100%;background:linear-gradient(135deg,var(--red3),var(--red2));
+      color:#fff;border:none;border-radius:10px;padding:12px;
+      font-weight:700;font-size:0.88rem;cursor:pointer;transition:.2s;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      box-shadow:0 4px 16px rgba(183,28,28,0.3);
+    }
+    .btn-pdf:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(183,28,28,0.4);}
+    .btn-pdf:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+
+    ::-webkit-scrollbar{width:3px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:rgba(239,83,80,0.15);border-radius:2px;}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-box">🛡️</div>
+    <span class="logo-name">SecAudit</span>
+    <span class="logo-sub">// Auditoría de Seguridad IT</span>
+  </div>
+  <div class="topbar-right">
+    <span class="target-chip" id="t-target">Sin escanear</span>
+    <span class="score-chip score-high" id="t-score-chip" style="display:none"></span>
+    <span class="topbar-time" id="t-clock">--:--:--</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="left">
+
+    <!-- SCAN HERO -->
+    <div class="scan-hero">
+      <div class="shield-wrap">
+        <div class="shield-ring">
+          <div class="shield-score">
+            <div class="score-big" id="score-num" style="color:var(--muted2)">—</div>
+            <div class="score-sub">Riesgo</div>
+          </div>
+        </div>
+      </div>
+      <div class="scan-info">
+        <div class="scan-title">Auditoría de Seguridad</div>
+        <div class="scan-desc">Analiza el sistema en busca de vulnerabilidades: puertos peligrosos abiertos, contraseñas débiles, actualizaciones pendientes y configuraciones inseguras.</div>
+        <div class="scan-input-row">
+          <input class="target-input" id="target-input" value="192.168.1.10" placeholder="IP o hostname objetivo...">
+          <select class="target-input" id="scan-depth" style="flex:0;width:140px;">
+            <option value="quick">Rápido</option>
+            <option value="standard" selected>Estándar</option>
+            <option value="deep">Profundo</option>
+          </select>
+          <button class="btn-scan" id="btn-scan" onclick="startAudit()">🔍 Escanear</button>
+          <button class="btn-stop" id="btn-stop" onclick="stopAudit()">■ Detener</button>
+        </div>
+        <div class="scan-progress" id="scan-progress">
+          <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+          <div class="prog-label"><span id="prog-label">Iniciando...</span><span id="prog-pct">0%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RISK SUMMARY -->
+    <div class="risk-bar-card">
+      <div class="sec-label">// Resumen de riesgos encontrados</div>
+      <div class="risk-items">
+        <div class="risk-item">
+          <div class="risk-val" id="r-crit" style="color:#ff1744">0</div>
+          <div class="risk-label">Críticos</div>
+        </div>
+        <div class="risk-item">
+          <div class="risk-val" id="r-high" style="color:var(--red)">0</div>
+          <div class="risk-label">Altos</div>
+        </div>
+        <div class="risk-item">
+          <div class="risk-val" id="r-med" style="color:var(--yellow)">0</div>
+          <div class="risk-label">Medios</div>
+        </div>
+        <div class="risk-item">
+          <div class="risk-val" id="r-low" style="color:var(--green)">0</div>
+          <div class="risk-label">Bajos / Info</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINDINGS TABLE -->
+    <div class="findings-card">
+      <div class="findings-header">
+        <div class="fh">Severidad</div>
+        <div class="fh">Hallazgo</div>
+        <div class="fh">Score</div>
+        <div class="fh">Puerto</div>
+        <div class="fh">Estado</div>
+      </div>
+      <div class="findings-body" id="findings-body">
+        <div class="empty-findings">$ secaudit --waiting target...<span style="animation:blink 1s infinite;display:inline-block">_</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+
+    <div class="terminal">
+      <div class="term-hdr">
+        <div class="term-dots">
+          <div class="td2" style="background:#ff5f57"></div>
+          <div class="td2" style="background:#febc2e"></div>
+          <div class="td2" style="background:#28c840"></div>
+        </div>
+        <span class="term-title">secaudit.log</span>
+      </div>
+      <div class="term-body" id="term-body">
+        <div class="tl"><span class="tl-ts">00:00:00</span><span class="tl-info">SecAudit v1.0 — JRC Tools</span></div>
+        <div class="tl"><span class="tl-ts">00:00:00</span><span class="tl-dim">Motor de análisis cargado</span></div>
+        <div class="tl"><span class="tl-ts">00:00:00</span><span class="tl-dim">Introduce un target y pulsa Escanear</span></div>
+      </div>
+    </div>
+
+    <!-- CHECKLIST -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;">
+      <div class="sec-label">// Comprobaciones de seguridad</div>
+      <div class="check-list" id="check-list">
+        <div class="check-item"><span class="check-icon">🔍</span><span class="check-name">Puertos peligrosos abiertos</span><span class="check-result cr-pending">—</span></div>
+        <div class="check-item"><span class="check-icon">🔑</span><span class="check-name">Contraseñas por defecto</span><span class="check-result cr-pending">—</span></div>
+        <div class="check-item"><span class="check-icon">📦</span><span class="check-name">Actualizaciones pendientes</span><span class="check-result cr-pending">—</span></div>
+        <div class="check-item"><span class="check-icon">🔒</span><span class="check-name">Firewall activo</span><span class="check-result cr-pending">—</span></div>
+        <div class="check-item"><span class="check-icon">🔐</span><span class="check-name">SSL/TLS actualizado</span><span class="check-result cr-pending">—</span></div>
+        <div class="check-item"><span class="check-icon">👤</span><span class="check-name">Usuarios con permisos admin</span><span class="check-result cr-pending">—</span></div>
+        <div class="check-item"><span class="check-icon">📋</span><span class="check-name">Logs de seguridad habilitados</span><span class="check-result cr-pending">—</span></div>
+      </div>
+    </div>
+
+    <!-- EXPORT PDF -->
+    <button class="btn-pdf" id="btn-pdf" onclick="exportPDF()" disabled>
+      📄 Exportar Informe PDF
+    </button>
+
+  </div>
+</div>
+
+<script>
+// ── VULNERABILITY DB ──────────────────────────────────────────────────────
+const FINDINGS_DB = [
+  { sev:'CRIT', title:'Puerto 23 (Telnet) abierto', cat:'Acceso remoto', score:9.8, port:'23', status:'open',   log:['crit','CRÍTICO: Telnet expuesto — comunicación sin cifrar'] },
+  { sev:'CRIT', title:'Puerto 445 (SMB) expuesto a internet', cat:'Compartición de archivos', score:9.3, port:'445', status:'open', log:['crit','CRÍTICO: SMB expuesto — riesgo EternalBlue/WannaCry'] },
+  { sev:'HIGH', title:'Contraseña de administrador débil detectada', cat:'Autenticación', score:8.1, port:'—', status:'open',   log:['high','ALTO: admin/admin123 detectado en servicio web'] },
+  { sev:'HIGH', title:'Puerto 3389 (RDP) sin autenticación NLA', cat:'Acceso remoto', score:7.8, port:'3389', status:'open', log:['high','ALTO: RDP abierto sin Network Level Authentication'] },
+  { sev:'HIGH', title:'7 actualizaciones de seguridad pendientes', cat:'Parches del sistema', score:7.2, port:'—', status:'open', log:['high','ALTO: Sistema desactualizado — CVEs conocidos activos'] },
+  { sev:'MED',  title:'Certificado SSL caducado (443)', cat:'Cifrado', score:5.5, port:'443', status:'open',   log:['med','MEDIO: Certificado expirado hace 32 días'] },
+  { sev:'MED',  title:'Puerto 8080 con panel sin autenticación', cat:'Configuración', score:5.1, port:'8080', status:'open', log:['med','MEDIO: Panel de administración sin login requerido'] },
+  { sev:'MED',  title:'Firewall con reglas permisivas (ANY/ANY)', cat:'Red', score:4.8, port:'—', status:'open', log:['med','MEDIO: Reglas de firewall demasiado permisivas detectadas'] },
+  { sev:'LOW',  title:'Versión de Apache expuesta en headers', cat:'Information Disclosure', score:3.1, port:'80', status:'open', log:['ok','BAJO: Server header revela Apache 2.4.51'] },
+  { sev:'LOW',  title:'Directory listing habilitado en /files/', cat:'Configuración web', score:2.8, port:'80', status:'open', log:['ok','BAJO: Directory listing activo — exposición de rutas'] },
+  { sev:'INFO', title:'SSH activo (puerto 22)', cat:'Acceso remoto', score:0, port:'22', status:'info',  log:['info','INFO: SSH activo — verificar acceso por clave vs contraseña'] },
+  { sev:'INFO', title:'Servicio FTP detectado', cat:'Transferencia de archivos', score:0, port:'21', status:'info', log:['info','INFO: FTP detectado — considerar migrar a SFTP'] },
+];
+
+const CHECKS_RESULTS = [
+  { pass: false, label: 'FAIL' },
+  { pass: false, label: 'FAIL' },
+  { pass: false, label: 'WARN' },
+  { pass: true,  label: 'PASS' },
+  { pass: false, label: 'FAIL' },
+  { pass: false, label: 'WARN' },
+  { pass: true,  label: 'PASS' },
+];
+
+let scanning = false, scanTimer = null;
+let findings = [];
+
+// ── SCAN ──────────────────────────────────────────────────────────────────
+const SCAN_PHASES = [
+  'Descubrimiento de host...',
+  'Escaneando puertos TCP/UDP...',
+  'Identificando servicios activos...',
+  'Comprobando credenciales por defecto...',
+  'Analizando actualizaciones pendientes...',
+  'Verificando configuración SSL/TLS...',
+  'Auditando reglas de firewall...',
+  'Comprobando configuración de usuarios...',
+  'Generando puntuación de riesgo...',
+  'Preparando informe...',
+];
+
+function startAudit() {
+  if (scanning) return;
+  scanning = true;
+  findings = [];
+  const target = document.getElementById('target-input').value.trim() || '192.168.1.10';
+
+  document.getElementById('btn-scan').disabled = true;
+  document.getElementById('btn-stop').style.display = '';
+  document.getElementById('scan-progress').style.display = 'block';
+  document.getElementById('t-target').textContent = target;
+  document.getElementById('t-score-chip').style.display = 'none';
+  document.getElementById('findings-body').innerHTML = `<div class="empty-findings">Escaneando ${target}...<span style="animation:blink 1s infinite;display:inline-block">_</span></div>`;
+  document.getElementById('score-num').textContent = '—';
+  document.getElementById('score-num').style.color = 'var(--muted2)';
+  resetRiskCounters();
+  resetChecklist();
+
+  log(`Iniciando auditoría en ${target}`, 'info');
+  log(`Modo: ${document.getElementById('scan-depth').options[document.getElementById('scan-depth').selectedIndex].text}`, 'dim');
+
+  const shuffled = [...FINDINGS_DB].sort(()=>Math.random()-.5);
+  let phase = 0, findingIdx = 0;
+  const totalPhases = SCAN_PHASES.length;
+
+  function nextStep() {
+    if (!scanning) return;
+    if (phase >= totalPhases) { finishAudit(); return; }
+
+    const pct = Math.round((phase+1)/totalPhases*100);
+    document.getElementById('prog-fill').style.width = pct+'%';
+    document.getElementById('prog-pct').textContent = pct+'%';
+    document.getElementById('prog-label').textContent = SCAN_PHASES[phase];
+    log(SCAN_PHASES[phase], 'dim');
+
+    // Add findings gradually
+    if (findingIdx < shuffled.length && Math.random() > 0.3) {
+      const f = shuffled[findingIdx++];
+      findings.push(f);
+      log(f.log[1], f.log[0]);
+      renderFindings();
+      updateRiskCounters();
+      updateScore();
+    }
+    if (phase >= 3 && findingIdx < shuffled.length) {
+      const f = shuffled[findingIdx++];
+      findings.push(f);
+      renderFindings();
+      updateRiskCounters();
+      updateScore();
+    }
+
+    phase++;
+    scanTimer = setTimeout(nextStep, 600 + Math.random()*500);
+  }
+  nextStep();
+}
+
+function stopAudit() {
+  scanning = false;
+  if (scanTimer) clearTimeout(scanTimer);
+  log('Auditoría detenida por el usuario', 'med');
+  document.getElementById('btn-scan').disabled = false;
+  document.getElementById('btn-stop').style.display = 'none';
+}
+
+function finishAudit() {
+  scanning = false;
+  // Add remaining findings
+  const shuffled = [...FINDINGS_DB].sort(()=>Math.random()-.5);
+  shuffled.forEach(f => { if (!findings.find(x=>x.title===f.title)) findings.push(f); });
+  renderFindings();
+  updateRiskCounters();
+  updateScore(true);
+  renderChecklistResults();
+
+  document.getElementById('btn-scan').disabled = false;
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('btn-pdf').disabled = false;
+
+  const score = calcScore();
+  log(`Auditoría completada — ${findings.length} hallazgos — Score: ${score}/10`, score > 7 ? 'crit' : score > 4 ? 'med' : 'ok');
+  log(`Informe listo para exportar`, 'info');
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+const SEV_ORDER = { CRIT:0, HIGH:1, MED:2, LOW:3, INFO:4 };
+const SEV_LABELS = { CRIT:'● CRÍTICO', HIGH:'▲ ALTO', MED:'◆ MEDIO', LOW:'▼ BAJO', INFO:'ℹ INFO' };
+const SEV_CLASS = { CRIT:'sev-crit', HIGH:'sev-high', MED:'sev-med', LOW:'sev-low', INFO:'sev-info' };
+
+function renderFindings() {
+  const sorted = [...findings].sort((a,b)=>SEV_ORDER[a.sev]-SEV_ORDER[b.sev]);
+  document.getElementById('findings-body').innerHTML = sorted.map(f => `
+    <div class="finding-row">
+      <div><span class="sev ${SEV_CLASS[f.sev]}">${SEV_LABELS[f.sev]}</span></div>
+      <div>
+        <div class="f-title">${f.title}</div>
+        <div class="f-cat">${f.cat}</div>
+      </div>
+      <div class="f-score" style="color:${f.score>=9?'#ff1744':f.score>=7?'var(--red)':f.score>=5?'var(--yellow)':f.score>0?'var(--green)':'var(--muted2)'}">
+        ${f.score > 0 ? f.score.toFixed(1) : '—'}
+      </div>
+      <div class="f-port">${f.port}</div>
+      <div><span class="status-badge ${f.status==='open'?'sb-open':f.status==='info'?'sb-info':'sb-patched'}">${f.status==='open'?'Abierto':f.status==='info'?'Info':'Parcheado'}</span></div>
+    </div>`).join('');
+}
+
+function updateRiskCounters() {
+  document.getElementById('r-crit').textContent = findings.filter(f=>f.sev==='CRIT').length;
+  document.getElementById('r-high').textContent = findings.filter(f=>f.sev==='HIGH').length;
+  document.getElementById('r-med').textContent  = findings.filter(f=>f.sev==='MED').length;
+  document.getElementById('r-low').textContent  = findings.filter(f=>['LOW','INFO'].includes(f.sev)).length;
+}
+
+function calcScore() {
+  if (!findings.length) return 0;
+  const max = findings.reduce((s,f)=>Math.max(s,f.score),0);
+  return Math.round(max * 10) / 10;
+}
+
+function updateScore(final=false) {
+  const score = calcScore();
+  const el = document.getElementById('score-num');
+  el.textContent = score.toFixed(1);
+  el.style.color = score >= 9 ? '#ff1744' : score >= 7 ? 'var(--red)' : score >= 5 ? 'var(--yellow)' : 'var(--green)';
+
+  if (final) {
+    const chip = document.getElementById('t-score-chip');
+    chip.style.display = '';
+    chip.textContent = 'Riesgo: ' + (score>=9?'CRÍTICO':score>=7?'ALTO':score>=5?'MEDIO':'BAJO') + ' (' + score + ')';
+    chip.className = 'score-chip ' + (score>=7?'score-high':score>=5?'score-mid':'score-low');
+  }
+}
+
+function resetRiskCounters() {
+  ['r-crit','r-high','r-med','r-low'].forEach(id=>document.getElementById(id).textContent='0');
+}
+
+function resetChecklist() {
+  document.querySelectorAll('.check-result').forEach(el=>{
+    el.className='check-result cr-pending'; el.textContent='—';
+  });
+}
+
+function renderChecklistResults() {
+  const items = document.querySelectorAll('.check-result');
+  CHECKS_RESULTS.forEach((r,i) => {
+    if (items[i]) {
+      const cls = r.label==='PASS'?'cr-pass':r.label==='WARN'?'cr-warn':'cr-fail';
+      items[i].className='check-result '+cls;
+      items[i].textContent=r.label;
+    }
+  });
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────────
+function exportPDF() {
+  const target = document.getElementById('target-input').value.trim() || '192.168.1.10';
+  const score = calcScore();
+  const crit = findings.filter(f=>f.sev==='CRIT').length;
+  const high = findings.filter(f=>f.sev==='HIGH').length;
+  const med  = findings.filter(f=>f.sev==='MED').length;
+  const sorted = [...findings].sort((a,b)=>SEV_ORDER[a.sev]-SEV_ORDER[b.sev]);
+  const date = new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
+  const riskLabel = score>=9?'CRÍTICO':score>=7?'ALTO':score>=5?'MEDIO':'BAJO';
+  const riskColor = score>=9?'#b71c1c':score>=7?'#e53935':score>=5?'#f9a825':'#2e7d32';
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;padding:40px;background:#fff;color:#212121;font-size:13px;}
+    h1{color:#b71c1c;font-size:22px;margin-bottom:4px;}
+    .subtitle{color:#757575;font-size:12px;margin-bottom:28px;}
+    .meta{display:flex;gap:32px;background:#fafafa;border:1px solid #eee;border-radius:8px;padding:16px;margin-bottom:24px;}
+    .meta-item{display:flex;flex-direction:column;gap:3px;}
+    .meta-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#9e9e9e;}
+    .meta-val{font-size:1rem;font-weight:700;}
+    .score-badge{display:inline-block;background:${riskColor};color:#fff;padding:3px 12px;border-radius:12px;font-weight:700;font-size:11px;}
+    table{width:100%;border-collapse:collapse;margin-top:8px;}
+    th{background:#f5f5f5;padding:8px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#616161;border-bottom:2px solid #eee;}
+    td{padding:9px 12px;border-bottom:1px solid #f0f0f0;font-size:12px;}
+    tr:hover td{background:#fafafa;}
+    .sev-crit{color:#b71c1c;font-weight:700;}
+    .sev-high{color:#e53935;font-weight:700;}
+    .sev-med{color:#f9a825;font-weight:700;}
+    .sev-low{color:#2e7d32;font-weight:700;}
+    .sev-info{color:#1565c0;}
+    .section-title{font-size:13px;font-weight:700;color:#424242;margin:24px 0 10px;padding-bottom:6px;border-bottom:2px solid #b71c1c;}
+    .check-row{display:flex;justify-content:space-between;padding:7px 12px;background:#fafafa;border-radius:6px;margin-bottom:5px;font-size:12px;}
+    .pass{color:#2e7d32;font-weight:700;}
+    .fail{color:#b71c1c;font-weight:700;}
+    .warn{color:#f57f17;font-weight:700;}
+    footer{margin-top:32px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#9e9e9e;display:flex;justify-content:space-between;}
+  </style></head><body>
+  <h1>🛡️ Informe de Auditoría de Seguridad</h1>
+  <div class="subtitle">Generado por SecAudit v1.0 — JRC Tools · ${date}</div>
+  <div class="meta">
+    <div class="meta-item"><span class="meta-label">Objetivo</span><span class="meta-val">${target}</span></div>
+    <div class="meta-item"><span class="meta-label">Puntuación de riesgo</span><span class="meta-val">${score}/10 <span class="score-badge">${riskLabel}</span></span></div>
+    <div class="meta-item"><span class="meta-label">Hallazgos</span><span class="meta-val">${findings.length} total</span></div>
+    <div class="meta-item"><span class="meta-label">Críticos / Altos</span><span class="meta-val" style="color:#b71c1c">${crit} / ${high}</span></div>
+  </div>
+  <div class="section-title">Hallazgos por severidad</div>
+  <table><thead><tr><th>Severidad</th><th>Descripción</th><th>Categoría</th><th>Score</th><th>Puerto</th></tr></thead><tbody>
+  ${sorted.map(f=>`<tr>
+    <td class="sev-${f.sev.toLowerCase()}">${f.sev}</td>
+    <td>${f.title}</td><td>${f.cat}</td>
+    <td>${f.score>0?f.score.toFixed(1):'—'}</td>
+    <td style="font-family:monospace">${f.port}</td>
+  </tr>`).join('')}
+  </tbody></table>
+  <div class="section-title">Comprobaciones de seguridad</div>
+  ${['Puertos peligrosos abiertos','Contraseñas por defecto','Actualizaciones pendientes','Firewall activo','SSL/TLS actualizado','Usuarios con permisos admin','Logs de seguridad habilitados'].map((name,i)=>`
+    <div class="check-row"><span>${name}</span><span class="${CHECKS_RESULTS[i].label.toLowerCase()}">${CHECKS_RESULTS[i].label}</span></div>`).join('')}
+  <div class="section-title">Recomendaciones prioritarias</div>
+  <ol style="padding-left:20px;line-height:2;">
+    ${crit>0?'<li>Deshabilitar <strong>Telnet (puerto 23)</strong> inmediatamente y reemplazar por SSH</li>':''}
+    ${high>0?'<li>Aplicar las <strong>actualizaciones de seguridad</strong> pendientes del sistema operativo</li>':''}
+    <li>Revisar y reforzar las <strong>contraseñas de administrador</strong> con política de complejidad</li>
+    <li>Configurar <strong>NLA en RDP</strong> y limitar acceso por IP si es posible</li>
+    <li>Renovar el <strong>certificado SSL</strong> del servicio HTTPS</li>
+  </ol>
+  <footer>
+    <span>SecAudit v1.0 — Javier Rodríguez Cózar · jrc3092002@gmail.com</span>
+    <span>Generado: ${new Date().toLocaleString('es-ES')}</span>
+  </footer>
+  </body></html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `SecAudit_${target.replace(/\./g,'-')}_${new Date().toISOString().slice(0,10)}.html`;
+  a.click();
+  log(`Informe exportado: ${a.download}`, 'ok');
+}
+
+// ── LOG ───────────────────────────────────────────────────────────────────
+function log(msg, type='info') {
+  const body = document.getElementById('term-body');
+  const ts = new Date().toLocaleTimeString('es-ES');
+  const el = document.createElement('div');
+  el.className = 'tl';
+  el.innerHTML = `<span class="tl-ts">${ts}</span><span class="tl-${type}">${msg}</span>`;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+}
+
+setInterval(()=>{document.getElementById('t-clock').textContent=new Date().toLocaleTimeString('es-ES');},1000);
+</script>
+</body>
+</html>

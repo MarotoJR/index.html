@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetScan — Escáner de Red</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;600;700&display=swap');
+    :root {
+      --bg:#030d0f; --bg2:#071418; --bg3:#0a1e24;
+      --cyan:#00e5ff; --cyan2:#00b8d4; --cyan3:rgba(0,229,255,0.12);
+      --teal:#1de9b6; --teal2:rgba(29,233,182,0.15);
+      --yellow:#ffd740; --red:#ff5252; --muted:#4a7a88;
+      --text:#b2ebf2; --text2:#e0f7fa;
+      --card:rgba(0,229,255,0.04); --border:rgba(0,229,255,0.1);
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;}
+    code,pre,.mono{font-family:'JetBrains Mono',monospace;}
+
+    /* SCANLINES overlay */
+    body::before{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+    }
+
+    /* TOPBAR */
+    .topbar{
+      background:rgba(3,13,15,0.97);border-bottom:1px solid var(--border);
+      height:54px;display:flex;align-items:center;justify-content:space-between;
+      padding:0 24px;position:sticky;top:0;z-index:100;
+      backdrop-filter:blur(12px);
+    }
+    .logo{display:flex;align-items:center;gap:10px;}
+    .logo-icon{
+      width:32px;height:32px;border-radius:6px;border:1px solid var(--cyan2);
+      display:flex;align-items:center;justify-content:center;font-size:0.8rem;
+      font-weight:700;color:var(--cyan);font-family:'JetBrains Mono',monospace;
+      box-shadow:0 0 10px rgba(0,229,255,0.2);
+    }
+    .logo-name{font-size:1rem;font-weight:700;color:var(--text2);letter-spacing:1px;}
+    .logo-sub{font-size:0.7rem;color:var(--muted);margin-left:4px;font-family:'JetBrains Mono',monospace;}
+    .topbar-right{display:flex;align-items:center;gap:16px;}
+    .pill{font-size:0.7rem;padding:4px 12px;border-radius:20px;font-family:'JetBrains Mono',monospace;}
+    .pill-cyan{background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);color:var(--cyan);}
+    .pill-teal{background:rgba(29,233,182,0.08);border:1px solid rgba(29,233,182,0.2);color:var(--teal);}
+    .blink{animation:blink 1.2s infinite;}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+    /* LAYOUT */
+    .layout{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:18px;min-height:calc(100vh - 54px);}
+
+    /* LEFT */
+    .left{display:flex;flex-direction:column;gap:16px;}
+
+    /* SCANNER INPUT */
+    .scanner-card{
+      background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;
+    }
+    .scanner-title{font-size:0.72rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;font-family:'JetBrains Mono',monospace;}
+    .scanner-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .input-wrap{position:relative;flex:1;min-width:200px;}
+    .input-prefix{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:0.85rem;pointer-events:none;}
+    .net-input{
+      width:100%;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.2);
+      border-radius:8px;padding:10px 12px 10px 30px;color:var(--text2);
+      font-family:'JetBrains Mono',monospace;font-size:0.9rem;outline:none;transition:.2s;
+    }
+    .net-input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,229,255,0.08);}
+    .btn-scan{
+      background:var(--cyan);color:#000;padding:10px 24px;border:none;border-radius:8px;
+      font-weight:700;cursor:pointer;font-size:0.88rem;transition:.2s;white-space:nowrap;
+      font-family:'Inter',sans-serif;
+    }
+    .btn-scan:hover{box-shadow:0 0 20px rgba(0,229,255,0.4);transform:translateY(-1px);}
+    .btn-scan:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none;}
+    .btn-stop{background:transparent;border:1px solid var(--red);color:var(--red);padding:10px 20px;border-radius:8px;cursor:pointer;font-size:0.88rem;transition:.2s;}
+    .btn-stop:hover{background:rgba(255,82,82,0.1);}
+
+    /* PROGRESS */
+    .progress-bar{
+      height:3px;background:rgba(0,229,255,0.1);border-radius:2px;overflow:hidden;margin-top:14px;
+    }
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--cyan2),var(--teal));border-radius:2px;transition:width .3s;width:0%;}
+    .progress-text{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between;}
+
+    /* RADAR */
+    .radar-section{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;}
+    .radar-wrap{position:relative;width:200px;height:200px;flex-shrink:0;}
+    canvas#radar{display:block;}
+    .radar-center-text{
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      text-align:center;
+    }
+    .radar-count{font-size:1.6rem;font-weight:700;color:var(--cyan);font-family:'JetBrains Mono',monospace;}
+    .radar-label{font-size:0.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+    .stats-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .stat-mini{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+    .stat-mini-val{font-size:1.1rem;font-weight:700;font-family:'JetBrains Mono',monospace;}
+    .stat-mini-label{font-size:0.65rem;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;}
+
+    /* DEVICES TABLE */
+    .devices-card{
+      background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;flex:1;
+    }
+    .devices-header{
+      display:grid;grid-template-columns:120px 140px 1fr 90px 80px;
+      padding:10px 16px;background:rgba(0,229,255,0.04);border-bottom:1px solid var(--border);
+    }
+    .dh{font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+    .devices-body{max-height:320px;overflow-y:auto;}
+    .device-row{
+      display:grid;grid-template-columns:120px 140px 1fr 90px 80px;
+      padding:10px 16px;border-bottom:1px solid rgba(0,229,255,0.05);
+      align-items:center;animation:fadeRow .3s ease;
+    }
+    @keyframes fadeRow{from{opacity:0;background:rgba(0,229,255,0.1);}to{opacity:1;background:transparent;}}
+    .device-row:hover{background:rgba(0,229,255,0.04);}
+    .device-ip{font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:var(--cyan);}
+    .device-mac{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted);}
+    .device-name{font-size:0.84rem;color:var(--text2);}
+    .device-vendor{font-size:0.72rem;color:var(--muted);}
+    .status-up{color:var(--teal);font-size:0.75rem;display:flex;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace;}
+    .status-up::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 4px var(--teal);}
+    .ports-cell{display:flex;flex-wrap:wrap;gap:3px;}
+    .port-badge{font-size:0.62rem;font-family:'JetBrains Mono',monospace;padding:1px 5px;border-radius:4px;border:1px solid rgba(0,229,255,0.2);color:var(--cyan2);background:rgba(0,229,255,0.06);}
+    .port-badge.open{border-color:rgba(29,233,182,0.3);color:var(--teal);background:rgba(29,233,182,0.06);}
+    .port-badge.warn{border-color:rgba(255,215,64,0.3);color:var(--yellow);background:rgba(255,215,64,0.06);}
+    .empty-row{padding:40px;text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.82rem;}
+
+    /* RIGHT SIDEBAR */
+    .right{display:flex;flex-direction:column;gap:16px;}
+
+    /* TERMINAL LOG */
+    .terminal{
+      background:#020a0c;border:1px solid rgba(0,229,255,0.15);border-radius:14px;
+      overflow:hidden;flex:1;
+    }
+    .terminal-header{
+      background:rgba(0,229,255,0.06);border-bottom:1px solid var(--border);
+      padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
+    }
+    .terminal-dots{display:flex;gap:6px;}
+    .td{width:10px;height:10px;border-radius:50%;}
+    .terminal-title{font-size:0.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:1px;}
+    .terminal-body{
+      padding:14px;height:280px;overflow-y:auto;
+      font-family:'JetBrains Mono',monospace;font-size:0.72rem;
+      display:flex;flex-direction:column;gap:3px;
+    }
+    .log-line{display:flex;gap:8px;line-height:1.6;}
+    .log-ts{color:rgba(0,229,255,0.35);flex-shrink:0;}
+    .log-info{color:var(--cyan2);}
+    .log-ok{color:var(--teal);}
+    .log-warn{color:var(--yellow);}
+    .log-err{color:var(--red);}
+    .log-dim{color:var(--muted);}
+
+    /* PORT CHECKER */
+    .port-card{
+      background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;
+    }
+    .port-row{display:flex;gap:8px;margin-bottom:12px;}
+    .port-input{
+      flex:1;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.15);
+      border-radius:7px;padding:8px 12px;color:var(--text2);font-family:'JetBrains Mono',monospace;
+      font-size:0.82rem;outline:none;
+    }
+    .port-input:focus{border-color:var(--cyan);}
+    .btn-check{
+      background:rgba(29,233,182,0.12);border:1px solid rgba(29,233,182,0.3);color:var(--teal);
+      padding:8px 14px;border-radius:7px;cursor:pointer;font-size:0.8rem;font-weight:600;transition:.2s;
+    }
+    .btn-check:hover{background:rgba(29,233,182,0.2);}
+    .port-results{display:flex;flex-direction:column;gap:5px;max-height:130px;overflow-y:auto;}
+    .port-result{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:6px 10px;border-radius:7px;font-size:0.75rem;font-family:'JetBrains Mono',monospace;
+    }
+    .port-result.open-res{background:rgba(29,233,182,0.06);border:1px solid rgba(29,233,182,0.15);}
+    .port-result.closed-res{background:rgba(255,82,82,0.05);border:1px solid rgba(255,82,82,0.12);}
+    .port-result-label{color:var(--text2);}
+    .port-result-status{font-weight:700;}
+
+    ::-webkit-scrollbar{width:3px;height:3px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:rgba(0,229,255,0.15);border-radius:2px;}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">NS</div>
+    <span class="logo-name">NetScan</span>
+    <span class="logo-sub">// Escáner de Red Local</span>
+  </div>
+  <div class="topbar-right">
+    <span class="pill pill-cyan mono" id="t-subnet">192.168.1.0/24</span>
+    <span class="pill pill-teal" id="t-status"><span class="blink">■</span> Listo</span>
+    <span class="pill pill-cyan mono" id="t-clock">--:--:--</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="left">
+
+    <!-- SCANNER INPUT -->
+    <div class="scanner-card">
+      <div class="scanner-title">// Configuración de Escaneo</div>
+      <div class="scanner-row">
+        <div class="input-wrap">
+          <span class="input-prefix">$</span>
+          <input class="net-input" id="subnet-input" value="192.168.1.0/24" placeholder="192.168.1.0/24">
+        </div>
+        <select class="net-input" id="scan-type" style="flex:0;width:160px;padding-left:10px;">
+          <option value="quick">Rápido (ping)</option>
+          <option value="ports" selected>Con puertos</option>
+          <option value="deep">Profundo</option>
+        </select>
+        <button class="btn-scan" id="btn-scan" onclick="startScan()">▶ Escanear</button>
+        <button class="btn-stop" id="btn-stop" onclick="stopScan()" style="display:none">■ Detener</button>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+      <div class="progress-text">
+        <span id="prog-text">Esperando escaneo...</span>
+        <span id="prog-pct">0%</span>
+      </div>
+    </div>
+
+    <!-- RADAR + STATS -->
+    <div class="scanner-card">
+      <div class="scanner-title">// Visión General de Red</div>
+      <div class="radar-section">
+        <div class="radar-wrap">
+          <canvas id="radar" width="200" height="200"></canvas>
+          <div class="radar-center-text">
+            <div class="radar-count" id="radar-count">0</div>
+            <div class="radar-label">dispositivos</div>
+          </div>
+        </div>
+        <div class="stats-mini">
+          <div class="stat-mini">
+            <div class="stat-mini-val" id="s-online" style="color:var(--teal)">0</div>
+            <div class="stat-mini-label">Online</div>
+          </div>
+          <div class="stat-mini">
+            <div class="stat-mini-val" id="s-ports" style="color:var(--cyan)">0</div>
+            <div class="stat-mini-label">Puertos abiertos</div>
+          </div>
+          <div class="stat-mini">
+            <div class="stat-mini-val" id="s-warn" style="color:var(--yellow)">0</div>
+            <div class="stat-mini-label">Alertas</div>
+          </div>
+          <div class="stat-mini">
+            <div class="stat-mini-val" id="s-time" style="color:var(--muted)">--s</div>
+            <div class="stat-mini-label">Tiempo scan</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEVICES TABLE -->
+    <div class="devices-card">
+      <div class="devices-header">
+        <div class="dh">IP</div>
+        <div class="dh">MAC</div>
+        <div class="dh">Hostname / Vendor</div>
+        <div class="dh">Estado</div>
+        <div class="dh">Puertos</div>
+      </div>
+      <div class="devices-body" id="devices-body">
+        <div class="empty-row">$ netscan --waiting...<span class="blink">_</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT SIDEBAR -->
+  <div class="right">
+
+    <!-- TERMINAL -->
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="terminal-dots">
+          <div class="td" style="background:#ff5f57"></div>
+          <div class="td" style="background:#febc2e"></div>
+          <div class="td" style="background:#28c840"></div>
+        </div>
+        <span class="terminal-title">netscan.log</span>
+      </div>
+      <div class="terminal-body" id="terminal-body">
+        <div class="log-line"><span class="log-ts">00:00:00</span><span class="log-dim">NetScan v1.0 iniciado — JRC Tools</span></div>
+        <div class="log-line"><span class="log-ts">00:00:00</span><span class="log-dim">Interfaces de red detectadas: eth0, wlan0</span></div>
+        <div class="log-line"><span class="log-ts">00:00:00</span><span class="log-info">Listo. Configura la subred y pulsa Escanear.</span></div>
+      </div>
+    </div>
+
+    <!-- PORT CHECKER -->
+    <div class="port-card">
+      <div class="scanner-title">// Comprobador de Puertos</div>
+      <div class="port-row">
+        <input class="port-input" id="port-ip" placeholder="IP (ej: 192.168.1.1)">
+        <input class="port-input" id="port-num" placeholder="Puerto" style="width:80px;flex:none;">
+        <button class="btn-check" onclick="checkPort()">Check</button>
+      </div>
+      <div class="port-results" id="port-results">
+        <div style="color:var(--muted);font-size:0.72rem;font-family:'JetBrains Mono',monospace;text-align:center;padding:8px;">Introduce una IP y puerto para comprobar</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── RADAR ─────────────────────────────────────────────────────────────────
+const radar = document.getElementById('radar');
+const rctx = radar.getContext('2d');
+let radarAngle = 0;
+let radarDots = [];
+
+function drawRadar() {
+  const cx = 100, cy = 100, r = 90;
+  rctx.clearRect(0, 0, 200, 200);
+
+  // Rings
+  [0.33, 0.66, 1].forEach(f => {
+    rctx.beginPath();
+    rctx.arc(cx, cy, r * f, 0, Math.PI * 2);
+    rctx.strokeStyle = 'rgba(0,229,255,0.12)';
+    rctx.lineWidth = 1;
+    rctx.stroke();
+  });
+
+  // Cross lines
+  rctx.strokeStyle = 'rgba(0,229,255,0.08)';
+  rctx.beginPath(); rctx.moveTo(cx - r, cy); rctx.lineTo(cx + r, cy); rctx.stroke();
+  rctx.beginPath(); rctx.moveTo(cx, cy - r); rctx.lineTo(cx, cy + r); rctx.stroke();
+
+  // Sweep gradient
+  const sweep = rctx.createConicalGradient ? null : null;
+  rctx.save();
+  rctx.translate(cx, cy);
+  rctx.rotate(radarAngle);
+  const grd = rctx.createLinearGradient(0, -r, 0, 0);
+  grd.addColorStop(0, 'rgba(0,229,255,0)');
+  grd.addColorStop(0.5, 'rgba(0,229,255,0.08)');
+  grd.addColorStop(1, 'rgba(0,229,255,0.35)');
+  rctx.beginPath();
+  rctx.moveTo(0, 0);
+  rctx.arc(0, 0, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 0.6);
+  rctx.fillStyle = grd;
+  rctx.fill();
+  rctx.restore();
+
+  // Sweep line
+  rctx.save();
+  rctx.translate(cx, cy);
+  rctx.rotate(radarAngle);
+  rctx.beginPath();
+  rctx.moveTo(0, 0);
+  rctx.lineTo(0, -r);
+  rctx.strokeStyle = 'rgba(0,229,255,0.8)';
+  rctx.lineWidth = 1.5;
+  rctx.stroke();
+  rctx.restore();
+
+  // Dots (devices)
+  radarDots.forEach(d => {
+    const age = (Date.now() - d.ts) / 4000;
+    const alpha = Math.max(0, 1 - age * 0.5);
+    rctx.beginPath();
+    rctx.arc(cx + d.rx, cy + d.ry, 4, 0, Math.PI * 2);
+    rctx.fillStyle = d.alert ? `rgba(255,215,64,${alpha})` : `rgba(29,233,182,${alpha})`;
+    rctx.fill();
+    if (alpha > 0.5) {
+      rctx.beginPath();
+      rctx.arc(cx + d.rx, cy + d.ry, 8, 0, Math.PI * 2);
+      rctx.strokeStyle = d.alert ? `rgba(255,215,64,${alpha * 0.3})` : `rgba(29,233,182,${alpha * 0.3})`;
+      rctx.lineWidth = 1;
+      rctx.stroke();
+    }
+  });
+
+  radarAngle += 0.03;
+  requestAnimationFrame(drawRadar);
+}
+drawRadar();
+
+// ── SCAN LOGIC ─────────────────────────────────────────────────────────────
+const DEVICES_DB = [
+  { ip:'192.168.1.1',   mac:'A4:C3:F0:12:34:56', name:'Router Principal',    vendor:'TP-Link',    ports:['80','443','22'],     alert:false },
+  { ip:'192.168.1.2',   mac:'B8:27:EB:AA:BB:CC', name:'Raspberry Pi',        vendor:'Raspberry',  ports:['22','80','3000'],    alert:false },
+  { ip:'192.168.1.10',  mac:'C4:6E:1F:55:66:77', name:'DESKTOP-JRC',         vendor:'Intel',      ports:['445','3389','5900'], alert:true },
+  { ip:'192.168.1.15',  mac:'D8:BB:2C:88:99:AA', name:'MacBook-Pro',         vendor:'Apple',      ports:['22','548'],          alert:false },
+  { ip:'192.168.1.20',  mac:'E0:4F:43:11:22:33', name:'iPhone de Javi',      vendor:'Apple',      ports:['62078'],             alert:false },
+  { ip:'192.168.1.25',  mac:'F4:5C:89:DD:EE:FF', name:'SmartTV-Samsung',     vendor:'Samsung',    ports:['8080','9090'],       alert:false },
+  { ip:'192.168.1.30',  mac:'00:11:22:33:44:55', name:'Impresora HP',        vendor:'HP',         ports:['80','631','9100'],   alert:false },
+  { ip:'192.168.1.40',  mac:'AA:BB:CC:44:55:66', name:'NAS-Synology',        vendor:'Synology',   ports:['5000','5001','22'],  alert:false },
+  { ip:'192.168.1.45',  mac:'11:22:33:CC:DD:EE', name:'Dispositivo desconocido', vendor:'—',     ports:['8888','4444'],       alert:true },
+  { ip:'192.168.1.50',  mac:'22:33:44:BB:AA:FF', name:'Amazon Echo',         vendor:'Amazon',     ports:['4070'],              alert:false },
+  { ip:'192.168.1.60',  mac:'33:44:55:11:22:33', name:'Xbox Series X',       vendor:'Microsoft',  ports:['3074'],              alert:false },
+  { ip:'192.168.1.100', mac:'44:55:66:77:88:99', name:'LAPTOP-TRABAJO',      vendor:'Lenovo',     ports:['445','139','3389'],  alert:true },
+];
+
+let scanning = false;
+let scanTimeout = null;
+let scanStart = 0;
+let foundDevices = [];
+
+function log(msg, type='info') {
+  const body = document.getElementById('terminal-body');
+  const ts = new Date().toLocaleTimeString('es-ES');
+  const el = document.createElement('div');
+  el.className = 'log-line';
+  el.innerHTML = `<span class="log-ts">${ts}</span><span class="log-${type}">${msg}</span>`;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+}
+
+function startScan() {
+  if (scanning) return;
+  scanning = true;
+  foundDevices = [];
+  radarDots = [];
+  scanStart = Date.now();
+  document.getElementById('btn-scan').disabled = true;
+  document.getElementById('btn-stop').style.display = '';
+  document.getElementById('devices-body').innerHTML = '<div class="empty-row">Escaneando red...<span class="blink">_</span></div>';
+  document.getElementById('t-status').innerHTML = '<span class="blink" style="color:var(--cyan)">■</span> Escaneando';
+  document.getElementById('s-online').textContent = '0';
+  document.getElementById('s-ports').textContent = '0';
+  document.getElementById('s-warn').textContent = '0';
+  document.getElementById('radar-count').textContent = '0';
+
+  const subnet = document.getElementById('subnet-input').value || '192.168.1.0/24';
+  document.getElementById('t-subnet').textContent = subnet;
+
+  log(`Iniciando escaneo en ${subnet}`, 'info');
+  log('Enviando ARP requests...', 'dim');
+  log('Modo: ' + document.getElementById('scan-type').options[document.getElementById('scan-type').selectedIndex].text, 'dim');
+
+  const shuffled = [...DEVICES_DB].sort(() => Math.random() - 0.5);
+  let idx = 0;
+  const total = shuffled.length;
+
+  function scanNext() {
+    if (!scanning || idx >= total) {
+      finishScan();
+      return;
+    }
+    const d = shuffled[idx];
+    idx++;
+    const pct = Math.round((idx / total) * 100);
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('prog-pct').textContent = pct + '%';
+    document.getElementById('prog-text').textContent = `Escaneando ${d.ip}...`;
+
+    // Add to radar
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 20 + Math.random() * 65;
+    radarDots.push({ rx: Math.cos(angle) * dist, ry: Math.sin(angle) * dist, ts: Date.now(), alert: d.alert });
+
+    foundDevices.push(d);
+    renderDevices();
+    updateStats();
+
+    const portStr = d.ports.join(', ');
+    log(`${d.ip} — ${d.name} (${d.vendor})`, 'ok');
+    if (d.ports.length) log(`  Puertos abiertos: ${portStr}`, 'dim');
+    if (d.alert) log(`  ⚠ ALERTA: puertos de riesgo detectados`, 'warn');
+
+    const delay = 300 + Math.random() * 500;
+    scanTimeout = setTimeout(scanNext, delay);
+  }
+  scanNext();
+}
+
+function stopScan() {
+  scanning = false;
+  if (scanTimeout) clearTimeout(scanTimeout);
+  finishScan();
+  log('Escaneo detenido por el usuario.', 'warn');
+}
+
+function finishScan() {
+  scanning = false;
+  document.getElementById('btn-scan').disabled = false;
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('t-status').innerHTML = '<span style="color:var(--teal)">■</span> Completado';
+  document.getElementById('prog-fill').style.width = '100%';
+  document.getElementById('prog-pct').textContent = '100%';
+  document.getElementById('prog-text').textContent = `Escaneo completado — ${foundDevices.length} dispositivos encontrados`;
+  const elapsed = ((Date.now() - scanStart) / 1000).toFixed(1);
+  document.getElementById('s-time').textContent = elapsed + 's';
+  log(`Escaneo completado en ${elapsed}s — ${foundDevices.length} hosts activos`, 'ok');
+  const alerts = foundDevices.filter(d => d.alert).length;
+  if (alerts) log(`⚠ ${alerts} dispositivos con puertos de riesgo detectados`, 'warn');
+}
+
+function renderDevices() {
+  const portColors = { '22':'open','80':'open','443':'open','3389':'warn','445':'warn','4444':'warn','8888':'warn','9090':'warn' };
+  document.getElementById('devices-body').innerHTML = foundDevices.map(d => `
+    <div class="device-row">
+      <div class="device-ip">${d.ip}</div>
+      <div class="device-mac">${d.mac}</div>
+      <div>
+        <div class="device-name">${d.name}</div>
+        <div class="device-vendor">${d.vendor}</div>
+      </div>
+      <div class="status-up">ONLINE</div>
+      <div class="ports-cell">${d.ports.map(p => `<span class="port-badge ${portColors[p]||''}">${p}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+function updateStats() {
+  document.getElementById('s-online').textContent = foundDevices.length;
+  document.getElementById('s-ports').textContent = foundDevices.reduce((s,d)=>s+d.ports.length,0);
+  document.getElementById('s-warn').textContent = foundDevices.filter(d=>d.alert).length;
+  document.getElementById('radar-count').textContent = foundDevices.length;
+}
+
+// PORT CHECKER
+const KNOWN_PORTS = {
+  '21':'FTP','22':'SSH','23':'Telnet','25':'SMTP','53':'DNS','80':'HTTP',
+  '110':'POP3','143':'IMAP','443':'HTTPS','445':'SMB','3306':'MySQL',
+  '3389':'RDP','5432':'PostgreSQL','5900':'VNC','8080':'HTTP-Alt','9090':'Web'
+};
+
+function checkPort() {
+  const ip = document.getElementById('port-ip').value.trim() || '192.168.1.1';
+  const port = document.getElementById('port-num').value.trim();
+  if (!port) return;
+
+  const results = document.getElementById('port-results');
+  const isOpen = Math.random() > 0.35;
+  const service = KNOWN_PORTS[port] || 'Unknown';
+  const latency = Math.floor(Math.random() * 80 + 1);
+
+  const el = document.createElement('div');
+  el.className = `port-result ${isOpen ? 'open-res' : 'closed-res'}`;
+  el.innerHTML = `
+    <span class="port-result-label">${ip}:${port} <span style="color:var(--muted)">(${service})</span></span>
+    <span class="port-result-status" style="color:${isOpen?'var(--teal)':'var(--red)'}">
+      ${isOpen ? `● ABIERTO ${latency}ms` : '○ CERRADO'}
+    </span>`;
+  results.prepend(el);
+  while (results.children.length > 6) results.removeChild(results.lastChild);
+  log(`Port check ${ip}:${port} (${service}) → ${isOpen?'OPEN':'CLOSED'}`, isOpen?'ok':'err');
+}
+
+// CLOCK
+setInterval(() => {
+  document.getElementById('t-clock').textContent = new Date().toLocaleTimeString('es-ES');
+}, 1000);
+</script>
+</body>
+</html>
