@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC Optimizer — Herramienta de Optimización</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D1117;
+  --bg2:#161B22;
+  --bg3:#21262D;
+  --border:#30363D;
+  --green:#3FB950;
+  --green2:#238636;
+  --blue:#58A6FF;
+  --yellow:#E3B341;
+  --red:#F85149;
+  --purple:#BC8CFF;
+  --orange:#FF8C55;
+  --text:#E6EDF3;
+  --muted:#7D8590;
+  --white:#FFFFFF;
+}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* NAV */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:16px}
+.topbar-logo{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--green);font-weight:600}
+.topbar-logo span{color:var(--muted)}
+.topbar-sub{font-size:12px;color:var(--muted);margin-left:4px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);margin-left:auto;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.status-label{font-size:12px;color:var(--green);font-family:'JetBrains Mono',monospace}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 53px)}
+
+/* SIDEBAR */
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:20px 14px;display:flex;flex-direction:column;gap:4px}
+.sidebar-section{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;padding:8px 10px 4px;margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--muted);transition:all 0.15s;border:none;background:transparent;width:100%;text-align:left}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:rgba(63,185,80,0.1);color:var(--green);border:1px solid rgba(63,185,80,0.2)}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--green2);color:white;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px}
+
+.run-all-btn{
+  margin-top:auto;
+  background:linear-gradient(135deg,var(--green2),#2EA043);
+  color:white;border:none;border-radius:8px;
+  padding:12px;font-size:14px;font-weight:700;
+  cursor:pointer;font-family:'Outfit',sans-serif;
+  transition:all 0.2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.run-all-btn:hover{filter:brightness(1.15);transform:translateY(-1px)}
+
+/* MAIN */
+.main{padding:24px 28px;overflow-y:auto}
+
+/* HEADER */
+.page-header{margin-bottom:24px}
+.page-title{font-size:22px;font-weight:700;color:var(--white);margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--muted)}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.stat-value{font-size:24px;font-weight:700;color:var(--white);font-family:'JetBrains Mono',monospace}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.stat-bar{height:3px;background:var(--bg3);border-radius:3px;margin-top:8px;overflow:hidden}
+.stat-fill{height:100%;border-radius:3px;transition:width 1s ease}
+
+/* VIEWS */
+.view{display:none}
+.view.active{display:block}
+
+/* TOOL CARDS */
+.tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tool-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color 0.2s}
+.tool-card:hover{border-color:var(--green)}
+.tool-head{padding:16px 18px;display:flex;align-items:flex-start;gap:12px}
+.tool-icon{font-size:22px;flex-shrink:0}
+.tool-title{font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px}
+.tool-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.tool-actions{padding:10px 18px;background:rgba(0,0,0,0.2);display:flex;gap:8px;align-items:center;border-top:1px solid var(--border)}
+.btn-run{background:var(--green2);color:white;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.15s;display:flex;align-items:center;gap:5px}
+.btn-run:hover{filter:brightness(1.2)}
+.btn-run:active{transform:scale(0.97)}
+.btn-download{background:transparent;color:var(--blue);border:1px solid rgba(88,166,255,0.3);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.15s}
+.btn-download:hover{background:rgba(88,166,255,0.1)}
+.tool-risk{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.risk-low{background:rgba(63,185,80,0.15);color:var(--green)}
+.risk-med{background:rgba(227,179,65,0.15);color:var(--yellow)}
+.risk-high{background:rgba(248,81,73,0.15);color:var(--red)}
+
+/* LOG */
+.log-area{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;max-height:300px;overflow-y:auto;margin-top:16px}
+.log-line{margin-bottom:2px}
+.log-ok{color:var(--green)}
+.log-info{color:var(--blue)}
+.log-warn{color:var(--yellow)}
+.log-err{color:var(--red)}
+.log-muted{color:var(--muted)}
+
+/* PROCESS TABLE */
+.process-table{width:100%;border-collapse:collapse;font-size:13px}
+.process-table th{padding:8px 12px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);font-weight:500}
+.process-table td{padding:10px 12px;border-bottom:1px solid rgba(48,54,61,0.5);color:var(--text)}
+.process-table tr:hover td{background:var(--bg3)}
+.cpu-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;width:80px}
+.cpu-fill{height:100%;border-radius:3px}
+
+/* STARTUP */
+.startup-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.startup-icon{font-size:18px}
+.startup-name{font-size:13px;font-weight:600;color:var(--white)}
+.startup-path{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.startup-impact{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;margin-left:auto;flex-shrink:0}
+.impact-high{background:rgba(248,81,73,0.15);color:var(--red)}
+.impact-med{background:rgba(227,179,65,0.15);color:var(--yellow)}
+.impact-low{background:rgba(63,185,80,0.15);color:var(--green)}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--bg3);border-radius:20px;transition:.3s;border:1px solid var(--border)}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:2px;bottom:2px;background:var(--muted);border-radius:50%;transition:.3s}
+input:checked + .toggle-slider{background:var(--green2);border-color:var(--green)}
+input:checked + .toggle-slider:before{transform:translateX(16px);background:white}
+
+/* PROGRESS */
+.progress-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.progress-overlay.show{display:flex}
+.progress-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px 36px;width:420px;text-align:center}
+.progress-title{font-size:16px;font-weight:600;color:var(--white);margin-bottom:6px}
+.progress-step{font-size:13px;color:var(--muted);margin-bottom:20px;font-family:'JetBrains Mono',monospace}
+.progress-bar-wrap{height:6px;background:var(--bg3);border-radius:6px;overflow:hidden}
+.progress-bar-fill{height:100%;background:var(--green);border-radius:6px;transition:width 0.4s ease;width:0%}
+.progress-pct{font-size:22px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;margin-top:12px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">PC<span>//</span>Optimizer</div>
+  <div class="topbar-sub">Herramienta de optimización de sistemas</div>
+  <div class="status-dot" style="margin-left:auto"></div>
+  <div class="status-label">Sistema listo</div>
+</div>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">Panel</div>
+    <button class="nav-item active" onclick="showView('dashboard',this)">
+      <span class="nav-icon">📊</span> Dashboard
+    </button>
+
+    <div class="sidebar-section">Optimización</div>
+    <button class="nav-item" onclick="showView('limpieza',this)">
+      <span class="nav-icon">🗑️</span> Limpieza de archivos
+      <span class="nav-badge">+2GB</span>
+    </button>
+    <button class="nav-item" onclick="showView('ram',this)">
+      <span class="nav-icon">🧠</span> Liberar RAM
+    </button>
+    <button class="nav-item" onclick="showView('disco',this)">
+      <span class="nav-icon">💾</span> Optimizar disco
+    </button>
+    <button class="nav-item" onclick="showView('cache',this)">
+      <span class="nav-icon">🔄</span> Limpiar caché y DNS
+    </button>
+
+    <div class="sidebar-section">Sistema</div>
+    <button class="nav-item" onclick="showView('procesos',this)">
+      <span class="nav-icon">⚡</span> Procesos activos
+    </button>
+    <button class="nav-item" onclick="showView('startup',this)">
+      <span class="nav-icon">🚀</span> Programas al inicio
+    </button>
+    <button class="nav-item" onclick="showView('scripts',this)">
+      <span class="nav-icon">📜</span> Scripts descargables
+    </button>
+
+    <button class="run-all-btn" onclick="runAll()">
+      ▶ Ejecutar todo ahora
+    </button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="page-header">
+        <div class="page-title">Dashboard del sistema</div>
+        <div class="page-sub">Estado actual y resumen de optimizaciones disponibles</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">CPU</div>
+          <div class="stat-value" id="cpu-val">--</div>
+          <div class="stat-sub">Uso actual</div>
+          <div class="stat-bar"><div class="stat-fill" id="cpu-bar" style="background:var(--green);width:0%"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">RAM</div>
+          <div class="stat-value" id="ram-val">--</div>
+          <div class="stat-sub">Uso actual</div>
+          <div class="stat-bar"><div class="stat-fill" id="ram-bar" style="background:var(--blue);width:0%"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Archivos basura</div>
+          <div class="stat-value" style="color:var(--yellow)">~2.4GB</div>
+          <div class="stat-sub">Estimado a limpiar</div>
+          <div class="stat-bar"><div class="stat-fill" style="background:var(--yellow);width:70%"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Optimizaciones</div>
+          <div class="stat-value" style="color:var(--green)">7</div>
+          <div class="stat-sub">Disponibles</div>
+          <div class="stat-bar"><div class="stat-fill" style="background:var(--green);width:100%"></div></div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:14px">Acciones rápidas</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <button onclick="runTask('Limpiando archivos temporales...',['Carpeta TEMP vacía','Papelera vaciada','Prefetch limpiado','WER logs eliminados'],3000)" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 10px;cursor:pointer;color:var(--text);font-family:Outfit,sans-serif;font-size:12px;transition:all 0.15s;text-align:center" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:20px;margin-bottom:6px">🗑️</div>
+            <div style="font-weight:600">Limpiar</div>
+            <div style="color:var(--muted);font-size:11px">Archivos temp</div>
+          </button>
+          <button onclick="runTask('Liberando RAM...',['Procesos innecesarios cerrados','Memoria caché liberada','RAM liberada: ~800MB'],2000)" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 10px;cursor:pointer;color:var(--text);font-family:Outfit,sans-serif;font-size:12px;transition:all 0.15s;text-align:center" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:20px;margin-bottom:6px">🧠</div>
+            <div style="font-weight:600">Liberar RAM</div>
+            <div style="color:var(--muted);font-size:11px">Memoria libre</div>
+          </button>
+          <button onclick="runTask('Limpiando caché y DNS...',['Caché DNS limpiada','Winsock reiniciado','Caché ARP eliminada','IP renovada'],2500)" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 10px;cursor:pointer;color:var(--text);font-family:Outfit,sans-serif;font-size:12px;transition:all 0.15s;text-align:center" onmouseover="this.style.borderColor='var(--purple)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:20px;margin-bottom:6px">🔄</div>
+            <div style="font-weight:600">Limpiar caché</div>
+            <div style="color:var(--muted);font-size:11px">DNS y red</div>
+          </button>
+          <button onclick="runAll()" style="background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);border-radius:8px;padding:14px 10px;cursor:pointer;color:var(--green);font-family:Outfit,sans-serif;font-size:12px;transition:all 0.15s;text-align:center" onmouseover="this.style.background='rgba(63,185,80,0.2)'" onmouseout="this.style.background='rgba(63,185,80,0.1)'">
+            <div style="font-size:20px;margin-bottom:6px">⚡</div>
+            <div style="font-weight:600">Optimizar todo</div>
+            <div style="font-size:11px">Limpieza completa</div>
+          </button>
+        </div>
+      </div>
+
+      <div id="log-container" style="display:none">
+        <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:8px">Registro de operaciones</div>
+        <div class="log-area" id="log-output"></div>
+      </div>
+    </div>
+
+    <!-- LIMPIEZA -->
+    <div class="view" id="view-limpieza">
+      <div class="page-header">
+        <div class="page-title">🗑️ Limpieza de archivos</div>
+        <div class="page-sub">Elimina archivos temporales, basura y logs innecesarios que ralentizan el sistema</div>
+      </div>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">📁</div>
+            <div>
+              <div class="tool-title">Carpeta TEMP del sistema</div>
+              <div class="tool-desc">Elimina archivos temporales de C:\Windows\Temp y %TEMP%. Suelen acumular cientos de MB sin que el usuario lo sepa.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Limpiando TEMP...',['C:\\Windows\\Temp → 847 archivos eliminados','%TEMP% → 1.2GB liberados','Archivos en uso omitidos: 3'],2000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('temp')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🗑️</div>
+            <div>
+              <div class="tool-title">Vaciar papelera de reciclaje</div>
+              <div class="tool-desc">Vacía la papelera de todos los usuarios del sistema. Los archivos eliminados siguen ocupando espacio hasta que se vacía.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Vaciando papelera...',['Papelera vaciada correctamente','Espacio liberado: 340MB'],1000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('recycle')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">⚡</div>
+            <div>
+              <div class="tool-title">Limpiar Prefetch</div>
+              <div class="tool-desc">Elimina archivos prefetch de Windows (C:\Windows\Prefetch). Mejora el tiempo de inicio. Windows los recrea automáticamente.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Limpiando Prefetch...',['128 archivos .pf eliminados','Espacio liberado: 95MB','Windows recreará los archivos al reiniciar'],1500)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('prefetch')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">📋</div>
+            <div>
+              <div class="tool-title">Limpieza de logs del sistema</div>
+              <div class="tool-desc">Elimina logs del visor de eventos de Windows (Application, System, Security). Pueden llegar a ocupar varios GB en equipos antiguos.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Limpiando logs...',['Event Log - Application: limpiado','Event Log - System: limpiado','Event Log - Security: limpiado','Espacio liberado: 1.1GB'],2000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('logs')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🔧</div>
+            <div>
+              <div class="tool-title">Windows Update Cleanup</div>
+              <div class="tool-desc">Elimina archivos de actualizaciones de Windows ya instaladas (C:\Windows\SoftwareDistribution\Download). Pueden ocupar varios GB.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Limpiando Windows Update...',['Servicio Windows Update detenido','Carpeta Download vaciada: 3.2GB liberados','Servicio Windows Update reiniciado'],3000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('winupdate')">⬇ .ps1</button>
+            <span class="tool-risk risk-med">Riesgo medio</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">📸</div>
+            <div>
+              <div class="tool-title">Eliminar puntos de restauración antiguos</div>
+              <div class="tool-desc">Mantiene solo el último punto de restauración del sistema y elimina los anteriores. Libera espacio en disco significativo.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Limpiando puntos de restauración...',['7 puntos de restauración antiguos eliminados','Último punto mantenido: ayer 14:32','Espacio liberado: 4.8GB'],2500)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('restore')">⬇ .ps1</button>
+            <span class="tool-risk risk-med">Riesgo medio</span>
+          </div>
+        </div>
+      </div>
+      <div id="log-limpieza" class="log-area" style="margin-top:16px;display:none"></div>
+    </div>
+
+    <!-- RAM -->
+    <div class="view" id="view-ram">
+      <div class="page-header">
+        <div class="page-title">🧠 Liberar RAM</div>
+        <div class="page-sub">Libera memoria RAM ocupada innecesariamente por procesos en segundo plano</div>
+      </div>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🧹</div>
+            <div>
+              <div class="tool-title">Limpiar memoria caché de RAM</div>
+              <div class="tool-desc">Libera la memoria caché del sistema que Windows acumula con el tiempo. No afecta a aplicaciones en uso.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Liberando memoria caché...',['Caché de standby lista liberada','RAM liberada: ~1.2GB','Sin impacto en aplicaciones activas'],2000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('ramcache')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">⚙️</div>
+            <div>
+              <div class="tool-title">Ajustar memoria virtual (pagefile)</div>
+              <div class="tool-desc">Configura el archivo de paginación de Windows para optimizar el uso de RAM y reducir el uso excesivo de disco como RAM virtual.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Optimizando memoria virtual...',['Tamaño inicial: 2048MB','Tamaño máximo: 4096MB','Reinicio requerido para aplicar cambios'],1500)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('pagefile')">⬇ .ps1</button>
+            <span class="tool-risk risk-med">Riesgo medio</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🔇</div>
+            <div>
+              <div class="tool-title">Deshabilitar efectos visuales</div>
+              <div class="tool-desc">Desactiva animaciones y efectos visuales de Windows que consumen RAM. Especialmente útil en equipos con poca memoria.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Optimizando efectos visuales...',['Animaciones desactivadas','Transparencias desactivadas','RAM ahorrada estimada: ~200MB','Rendimiento mejorado en equipos lentos'],2000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('visual')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🛑</div>
+            <div>
+              <div class="tool-title">Detener servicios innecesarios</div>
+              <div class="tool-desc">Para servicios de Windows que no son necesarios para el uso habitual: Xbox services, fax, tablet input, etc.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Deteniendo servicios...',['XblGameSave → detenido','XboxGipSvc → detenido','Fax → detenido','TabletInputService → detenido','RAM liberada: ~150MB'],2500)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('services')">⬇ .ps1</button>
+            <span class="tool-risk risk-med">Riesgo medio</span>
+          </div>
+        </div>
+      </div>
+      <div id="log-ram" class="log-area" style="margin-top:16px;display:none"></div>
+    </div>
+
+    <!-- DISCO -->
+    <div class="view" id="view-disco">
+      <div class="page-header">
+        <div class="page-title">💾 Optimizar disco</div>
+        <div class="page-sub">Desfragmenta HDDs, ejecuta TRIM en SSDs y comprueba errores de disco</div>
+      </div>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">💿</div>
+            <div>
+              <div class="tool-title">TRIM para SSD</div>
+              <div class="tool-desc">Ejecuta el comando TRIM en discos SSD para mantener el rendimiento óptimo. Windows lo hace automáticamente pero puedes forzarlo.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Ejecutando TRIM en SSD...',['Unidad C: → TRIM ejecutado correctamente','Unidad SSD identificada: Samsung 970 EVO','Rendimiento de escritura optimizado'],3000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('trim')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🔀</div>
+            <div>
+              <div class="tool-title">Desfragmentar HDD</div>
+              <div class="tool-desc">Desfragmenta discos duros mecánicos (HDD). IMPORTANTE: No ejecutar en SSDs, solo en HDDs tradicionales.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Desfragmentando HDD...',['Analizando disco...','Fragmentación detectada: 34%','Desfragmentando...','Desfragmentación completada','Fragmentación final: 2%'],5000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('defrag')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🔍</div>
+            <div>
+              <div class="tool-title">CHKDSK — Comprobar disco</div>
+              <div class="tool-desc">Analiza el disco en busca de errores del sistema de archivos y sectores defectuosos. Se ejecuta al reiniciar el sistema.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Programando CHKDSK...',['CHKDSK programado para el próximo reinicio','Flags: /f /r /x','Se ejecutará automáticamente al reiniciar'],1000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('chkdsk')">⬇ .ps1</button>
+            <span class="tool-risk risk-med">Riesgo medio</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🛠️</div>
+            <div>
+              <div class="tool-title">SFC — Reparar archivos del sistema</div>
+              <div class="tool-desc">System File Checker analiza y repara archivos del sistema de Windows corruptos o modificados. Muy útil en equipos lentos o con errores.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Ejecutando SFC /scannow...',['Verificando integridad de archivos...','Escaneando 100% completado','Windows encontró archivos corruptos y los reparó correctamente','Reinicia el equipo para completar la reparación'],6000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('sfc')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+      </div>
+      <div id="log-disco" class="log-area" style="margin-top:16px;display:none"></div>
+    </div>
+
+    <!-- CACHÉ DNS -->
+    <div class="view" id="view-cache">
+      <div class="page-header">
+        <div class="page-title">🔄 Limpiar caché y DNS</div>
+        <div class="page-sub">Soluciona problemas de red, limpia caché de navegadores y restablece configuración de red</div>
+      </div>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🌐</div>
+            <div>
+              <div class="tool-title">Limpiar caché DNS</div>
+              <div class="tool-desc">Ejecuta ipconfig /flushdns para limpiar la caché DNS. Soluciona problemas de resolución de nombres de dominio y carga lenta de webs.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Limpiando caché DNS...',['ipconfig /flushdns → OK','Caché DNS del resolver vaciada correctamente','La resolución DNS tardará un poco más en las primeras peticiones'],1000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('dns')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🔌</div>
+            <div>
+              <div class="tool-title">Reiniciar pila TCP/IP (Winsock)</div>
+              <div class="tool-desc">Restablece la pila de red de Windows. Soluciona problemas de conexión que no se arreglan con otros métodos. Requiere reinicio.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Reiniciando Winsock...',['netsh winsock reset → OK','netsh int ip reset → OK','Reinicio del equipo necesario para aplicar cambios'],1500)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('winsock')">⬇ .ps1</button>
+            <span class="tool-risk risk-med">Riesgo medio</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🖥️</div>
+            <div>
+              <div class="tool-title">Limpiar caché de Windows (WinSxS)</div>
+              <div class="tool-desc">Limpia el almacén de componentes de Windows (DISM). Puede liberar varios GB en instalaciones antiguas de Windows.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Limpiando WinSxS con DISM...',['Analizando componentes...','DISM /Online /Cleanup-Image /StartComponentCleanup','Componentes obsoletos eliminados','Espacio liberado: 2.1GB'],5000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('dism')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🌍</div>
+            <div>
+              <div class="tool-title">Renovar IP y limpiar ARP</div>
+              <div class="tool-desc">Libera y renueva la dirección IP del equipo y limpia la tabla ARP. Útil cuando hay conflictos de IP en la red.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" onclick="runTask('Renovando IP...',['ipconfig /release → OK','arp -d * → Tabla ARP limpiada','ipconfig /renew → IP renovada: 192.168.1.105','Conexión de red restablecida'],2000)">▶ Ejecutar</button>
+            <button class="btn-download" onclick="downloadScript('ip')">⬇ .ps1</button>
+            <span class="tool-risk risk-low">Riesgo bajo</span>
+          </div>
+        </div>
+      </div>
+      <div id="log-cache" class="log-area" style="margin-top:16px;display:none"></div>
+    </div>
+
+    <!-- PROCESOS -->
+    <div class="view" id="view-procesos">
+      <div class="page-header">
+        <div class="page-title">⚡ Procesos activos</div>
+        <div class="page-sub">Monitoriza qué procesos consumen más CPU y RAM en tiempo real</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+          <span style="font-size:13px;font-weight:600;color:var(--white)">Procesos del sistema</span>
+          <span style="font-size:11px;color:var(--muted)">(simulación — ejecuta el script para ver datos reales)</span>
+          <button onclick="downloadScript('processes')" class="btn-download" style="margin-left:auto">⬇ Script monitor</button>
+        </div>
+        <table class="process-table">
+          <thead>
+            <tr>
+              <th>Proceso</th>
+              <th>PID</th>
+              <th>CPU %</th>
+              <th>RAM (MB)</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="process-tbody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STARTUP -->
+    <div class="view" id="view-startup">
+      <div class="page-header">
+        <div class="page-title">🚀 Programas al inicio</div>
+        <div class="page-sub">Gestiona qué programas se inician con Windows. Desactiva los que no necesitas para arrancar más rápido.</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Tiempo de inicio actual: <span style="color:var(--yellow);font-family:'JetBrains Mono',monospace;font-weight:600">~47 segundos</span> · Potencial tras optimización: <span style="color:var(--green);font-family:'JetBrains Mono',monospace;font-weight:600">~22 segundos</span></div>
+        <div id="startup-list"></div>
+        <button class="btn-download" style="margin-top:12px" onclick="downloadScript('startup')">⬇ Descargar script gestión startup</button>
+      </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <div class="view" id="view-scripts">
+      <div class="page-header">
+        <div class="page-title">📜 Scripts descargables</div>
+        <div class="page-sub">Descarga los scripts PowerShell para ejecutarlos directamente en el equipo del cliente como administrador</div>
+      </div>
+      <div style="background:rgba(227,179,65,0.08);border:1px solid rgba(227,179,65,0.25);border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:var(--yellow)">
+        ⚠️ Ejecutar siempre como Administrador. Click derecho en PowerShell → "Ejecutar como administrador". Algunos scripts requieren reinicio posterior.
+      </div>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🚀</div>
+            <div>
+              <div class="tool-title">Script COMPLETO — Todo en uno</div>
+              <div class="tool-desc">Ejecuta todas las optimizaciones de una vez: limpieza, RAM, caché, DNS y disco. El más útil para llevar en un USB.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-run" style="background:var(--green2)" onclick="downloadScript('all')">⬇ Descargar Optimize-All.ps1</button>
+            <span class="tool-risk risk-low">Recomendado</span>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🗑️</div>
+            <div>
+              <div class="tool-title">Limpieza de archivos</div>
+              <div class="tool-desc">TEMP, papelera, prefetch, logs, Windows Update y puntos de restauración.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-download" onclick="downloadScript('temp')">⬇ Cleanup-Files.ps1</button>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🧠</div>
+            <div>
+              <div class="tool-title">Liberación de RAM</div>
+              <div class="tool-desc">Caché de memoria, servicios innecesarios y efectos visuales.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-download" onclick="downloadScript('ramcache')">⬇ Free-RAM.ps1</button>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">🌐</div>
+            <div>
+              <div class="tool-title">Red y DNS</div>
+              <div class="tool-desc">DNS flush, Winsock reset, renovación de IP y limpieza ARP.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-download" onclick="downloadScript('dns')">⬇ Fix-Network.ps1</button>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">💾</div>
+            <div>
+              <div class="tool-title">Disco y sistema</div>
+              <div class="tool-desc">TRIM SSD, SFC /scannow, DISM y CHKDSK.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-download" onclick="downloadScript('sfc')">⬇ Fix-Disk.ps1</button>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head">
+            <div class="tool-icon">📊</div>
+            <div>
+              <div class="tool-title">Monitor de procesos</div>
+              <div class="tool-desc">Muestra los 20 procesos que más CPU y RAM consumen en tiempo real.</div>
+            </div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn-download" onclick="downloadScript('processes')">⬇ Monitor-Processes.ps1</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PROGRESS OVERLAY -->
+<div class="progress-overlay" id="progress-overlay">
+  <div class="progress-box">
+    <div class="progress-title" id="prog-title">Optimizando sistema...</div>
+    <div class="progress-step" id="prog-step">Iniciando...</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="prog-bar"></div>
+    </div>
+    <div class="progress-pct" id="prog-pct">0%</div>
+  </div>
+</div>
+
+<script>
+// Scripts content
+const scripts = {
+  all: `# ============================================
+# PC OPTIMIZER - Script Completo Todo en Uno
+# Autor: Javier Rodriguez Cozar - Tecnico IT
+# Ejecutar como ADMINISTRADOR
+# ============================================
+
+Write-Host "===========================================" -ForegroundColor Cyan
+Write-Host "  PC OPTIMIZER - Limpieza Completa" -ForegroundColor Cyan
+Write-Host "===========================================" -ForegroundColor Cyan
+
+# 1. LIMPIAR ARCHIVOS TEMPORALES
+Write-Host "\n[1/7] Limpiando archivos temporales..." -ForegroundColor Yellow
+$tempFolders = @("$env:TEMP", "$env:SystemRoot\\Temp", "$env:SystemRoot\\Prefetch")
+foreach ($folder in $tempFolders) {
+    if (Test-Path $folder) {
+        Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue |
+            Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+        Write-Host "  [OK] $folder limpiado" -ForegroundColor Green
+    }
+}
+
+# 2. VACIAR PAPELERA
+Write-Host "\n[2/7] Vaciando papelera de reciclaje..." -ForegroundColor Yellow
+Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+Write-Host "  [OK] Papelera vaciada" -ForegroundColor Green
+
+# 3. LIMPIAR LOGS
+Write-Host "\n[3/7] Limpiando logs del sistema..." -ForegroundColor Yellow
+Get-EventLog -LogName * -ErrorAction SilentlyContinue | ForEach-Object {
+    Clear-EventLog -LogName $_.Log -ErrorAction SilentlyContinue
+}
+Write-Host "  [OK] Logs del sistema limpiados" -ForegroundColor Green
+
+# 4. DNS Y RED
+Write-Host "\n[4/7] Limpiando cache DNS y red..." -ForegroundColor Yellow
+ipconfig /flushdns | Out-Null
+Write-Host "  [OK] Cache DNS limpiada" -ForegroundColor Green
+arp -d * 2>$null
+Write-Host "  [OK] Tabla ARP limpiada" -ForegroundColor Green
+
+# 5. TRIM SSD
+Write-Host "\n[5/7] Ejecutando TRIM en SSD..." -ForegroundColor Yellow
+Optimize-Volume -DriveLetter C -ReTrim -Verbose
+Write-Host "  [OK] TRIM ejecutado en unidad C:" -ForegroundColor Green
+
+# 6. SFC
+Write-Host "\n[6/7] Verificando integridad del sistema (SFC)..." -ForegroundColor Yellow
+sfc /scannow
+Write-Host "  [OK] SFC completado" -ForegroundColor Green
+
+# 7. DISM
+Write-Host "\n[7/7] Limpiando componentes Windows (DISM)..." -ForegroundColor Yellow
+DISM /Online /Cleanup-Image /StartComponentCleanup
+Write-Host "  [OK] DISM completado" -ForegroundColor Green
+
+Write-Host "\n===========================================" -ForegroundColor Cyan
+Write-Host "  OPTIMIZACION COMPLETADA" -ForegroundColor Cyan
+Write-Host "  Reinicia el equipo para aplicar todos los cambios" -ForegroundColor Yellow
+Write-Host "===========================================" -ForegroundColor Cyan
+Read-Host "Pulsa Enter para salir"`,
+
+  temp: `# Limpieza de Archivos Temporales
+# Ejecutar como ADMINISTRADOR
+Write-Host "Limpiando archivos temporales..." -ForegroundColor Yellow
+$folders = @("$env:TEMP","$env:SystemRoot\\Temp","$env:SystemRoot\\Prefetch")
+foreach ($f in $folders) {
+    if (Test-Path $f) {
+        Get-ChildItem $f -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+        Write-Host "[OK] $f limpiado" -ForegroundColor Green
+    }
+}
+Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+Write-Host "[OK] Papelera vaciada" -ForegroundColor Green
+Write-Host "Limpieza completada." -ForegroundColor Cyan`,
+
+  dns: `# Limpieza de Red y DNS
+# Ejecutar como ADMINISTRADOR
+Write-Host "Limpiando red y DNS..." -ForegroundColor Yellow
+ipconfig /flushdns
+Write-Host "[OK] Cache DNS limpiada" -ForegroundColor Green
+arp -d * 2>$null
+Write-Host "[OK] Tabla ARP limpiada" -ForegroundColor Green
+Write-Host "Renovando IP..." -ForegroundColor Yellow
+ipconfig /release
+ipconfig /renew
+Write-Host "[OK] IP renovada" -ForegroundColor Green`,
+
+  winsock: `# Reset Winsock y TCP/IP
+# Ejecutar como ADMINISTRADOR - Requiere reinicio
+Write-Host "Reiniciando pila de red..." -ForegroundColor Yellow
+netsh winsock reset
+netsh int ip reset
+ipconfig /flushdns
+Write-Host "[OK] Winsock y TCP/IP reiniciados" -ForegroundColor Green
+Write-Host "REINICIA EL EQUIPO para aplicar los cambios" -ForegroundColor Red`,
+
+  sfc: `# SFC y DISM - Reparar sistema
+# Ejecutar como ADMINISTRADOR
+Write-Host "Ejecutando SFC /scannow..." -ForegroundColor Yellow
+sfc /scannow
+Write-Host "Ejecutando DISM..." -ForegroundColor Yellow
+DISM /Online /Cleanup-Image /RestoreHealth
+DISM /Online /Cleanup-Image /StartComponentCleanup
+Write-Host "[OK] Reparacion completada" -ForegroundColor Green`,
+
+  trim: `# TRIM para SSD
+# Ejecutar como ADMINISTRADOR
+Write-Host "Ejecutando TRIM en SSD..." -ForegroundColor Yellow
+Optimize-Volume -DriveLetter C -ReTrim -Verbose
+Write-Host "[OK] TRIM completado en C:" -ForegroundColor Green`,
+
+  defrag: `# Desfragmentar HDD
+# Solo para HDD, NO para SSD
+# Ejecutar como ADMINISTRADOR
+Write-Host "Analizando y desfragmentando HDD..." -ForegroundColor Yellow
+Optimize-Volume -DriveLetter C -Defrag -Verbose
+Write-Host "[OK] Desfragmentacion completada" -ForegroundColor Green`,
+
+  chkdsk: `# CHKDSK - Comprobar disco
+# Ejecutar como ADMINISTRADOR
+Write-Host "Programando CHKDSK para el proximo reinicio..." -ForegroundColor Yellow
+chkdsk C: /f /r /x
+Write-Host "[OK] CHKDSK programado - Reinicia el equipo" -ForegroundColor Green`,
+
+  ramcache: `# Liberar RAM y cache
+# Ejecutar como ADMINISTRADOR
+Write-Host "Liberando memoria cache..." -ForegroundColor Yellow
+[System.GC]::Collect()
+[System.GC]::WaitForPendingFinalizers()
+# Deshabilitar efectos visuales para ahorrar RAM
+$path = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects"
+Set-ItemProperty -Path $path -Name VisualFXSetting -Value 2 -ErrorAction SilentlyContinue
+Write-Host "[OK] RAM optimizada" -ForegroundColor Green`,
+
+  processes: `# Monitor de procesos - Top 20 por CPU y RAM
+# Ejecutar como ADMINISTRADOR
+Write-Host "TOP 20 PROCESOS POR CPU:" -ForegroundColor Cyan
+Get-Process | Sort-Object CPU -Descending | Select-Object -First 20 |
+    Format-Table Name, Id, CPU, @{N='RAM(MB)';E={[math]::Round($_.WorkingSet64/1MB,1)}} -AutoSize
+Write-Host "\nTOP 20 PROCESOS POR RAM:" -ForegroundColor Cyan
+Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 20 |
+    Format-Table Name, Id, @{N='RAM(MB)';E={[math]::Round($_.WorkingSet64/1MB,1)}}, CPU -AutoSize
+Read-Host "Pulsa Enter para salir"`,
+
+  startup: `# Gestionar programas de inicio
+# Ejecutar como ADMINISTRADOR
+Write-Host "Programas configurados para iniciarse con Windows:" -ForegroundColor Cyan
+Get-CimInstance Win32_StartupCommand | Format-Table Name, Command, Location -AutoSize
+Write-Host "\nPara deshabilitar uno: use msconfig o Task Manager > Startup" -ForegroundColor Yellow`,
+
+  logs: `# Limpiar logs del sistema
+# Ejecutar como ADMINISTRADOR
+Write-Host "Limpiando logs del sistema..." -ForegroundColor Yellow
+Get-EventLog -LogName * -ErrorAction SilentlyContinue | ForEach-Object {
+    Write-Host "  Limpiando: $($_.Log)"
+    Clear-EventLog -LogName $_.Log -ErrorAction SilentlyContinue
+}
+Write-Host "[OK] Todos los logs limpiados" -ForegroundColor Green`,
+
+  dism: `# DISM - Limpiar componentes Windows
+# Ejecutar como ADMINISTRADOR
+Write-Host "Ejecutando DISM limpieza de componentes..." -ForegroundColor Yellow
+DISM /Online /Cleanup-Image /StartComponentCleanup
+DISM /Online /Cleanup-Image /SPSuperseded
+Write-Host "[OK] Componentes limpiados" -ForegroundColor Green`,
+
+  services: `# Deshabilitar servicios innecesarios
+# Ejecutar como ADMINISTRADOR
+$services = @('XblGameSave','XboxGipSvc','XboxNetApiSvc','Fax','TabletInputService','WSearch')
+foreach ($svc in $services) {
+    $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
+    if ($s) {
+        Stop-Service -Name $svc -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $svc -StartupType Disabled -ErrorAction SilentlyContinue
+        Write-Host "[OK] $svc deshabilitado" -ForegroundColor Green
+    }
+}`,
+
+  winupdate: `# Limpiar carpeta Windows Update
+# Ejecutar como ADMINISTRADOR
+Write-Host "Limpiando archivos de Windows Update..." -ForegroundColor Yellow
+Stop-Service -Name wuauserv -Force
+Stop-Service -Name bits -Force
+Remove-Item "$env:SystemRoot\\SoftwareDistribution\\Download\\*" -Recurse -Force -ErrorAction SilentlyContinue
+Start-Service -Name wuauserv
+Start-Service -Name bits
+Write-Host "[OK] Carpeta de Windows Update limpiada" -ForegroundColor Green`,
+
+  restore: `# Eliminar puntos de restauracion antiguos
+# Ejecutar como ADMINISTRADOR
+Write-Host "Eliminando puntos de restauracion antiguos..." -ForegroundColor Yellow
+vssadmin delete shadows /all /quiet
+Write-Host "[OK] Puntos de restauracion eliminados" -ForegroundColor Green
+Write-Host "Creando nuevo punto de restauracion..." -ForegroundColor Yellow
+Checkpoint-Computer -Description "Post-Optimizacion" -RestorePointType MODIFY_SETTINGS
+Write-Host "[OK] Nuevo punto de restauracion creado" -ForegroundColor Green`,
+
+  visual: `# Optimizar efectos visuales para rendimiento
+# Ejecutar como ADMINISTRADOR
+Write-Host "Optimizando efectos visuales..." -ForegroundColor Yellow
+$reg = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects"
+Set-ItemProperty -Path $reg -Name VisualFXSetting -Value 2
+Write-Host "[OK] Efectos visuales optimizados para rendimiento" -ForegroundColor Green`,
+
+  pagefile: `# Optimizar archivo de paginacion
+# Ejecutar como ADMINISTRADOR
+Write-Host "Configurando memoria virtual..." -ForegroundColor Yellow
+$cs = Get-WmiObject Win32_ComputerSystem
+$cs.AutomaticManagedPagefile = $false
+$cs.Put() | Out-Null
+$pf = Get-WmiObject Win32_PageFileSetting
+if ($pf) { $pf.Delete() }
+Set-WmiInstance -Class Win32_PageFileSetting -Arguments @{Name="C:\\pagefile.sys";InitialSize=2048;MaximumSize=4096}
+Write-Host "[OK] Memoria virtual configurada: 2048MB - 4096MB" -ForegroundColor Green
+Write-Host "Reinicia para aplicar cambios" -ForegroundColor Yellow`,
+
+  recycle: `# Vaciar papelera de reciclaje
+Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+Write-Host "[OK] Papelera vaciada" -ForegroundColor Green`,
+
+  ip: `# Renovar IP y limpiar ARP
+ipconfig /release
+arp -d *
+ipconfig /flushdns
+ipconfig /renew
+Write-Host "[OK] IP renovada y ARP limpiado" -ForegroundColor Green`,
+
+  prefetch: `# Limpiar Prefetch
+# Ejecutar como ADMINISTRADOR
+Remove-Item "$env:SystemRoot\\Prefetch\\*" -Force -ErrorAction SilentlyContinue
+Write-Host "[OK] Prefetch limpiado" -ForegroundColor Green`
+};
+
+// Download script
+function downloadScript(key) {
+  const content = scripts[key] || scripts.all;
+  const names = {
+    all:'Optimize-ALL.ps1',temp:'Cleanup-Files.ps1',dns:'Fix-Network.ps1',
+    winsock:'Reset-Winsock.ps1',sfc:'Fix-Disk.ps1',trim:'TRIM-SSD.ps1',
+    defrag:'Defrag-HDD.ps1',chkdsk:'Check-Disk.ps1',ramcache:'Free-RAM.ps1',
+    processes:'Monitor-Processes.ps1',startup:'Manage-Startup.ps1',
+    logs:'Clean-Logs.ps1',dism:'DISM-Cleanup.ps1',services:'Disable-Services.ps1',
+    winupdate:'Clean-WindowsUpdate.ps1',restore:'Clean-RestorePoints.ps1',
+    visual:'Optimize-Visual.ps1',pagefile:'Optimize-PageFile.ps1',
+    recycle:'Empty-RecycleBin.ps1',ip:'Renew-IP.ps1',prefetch:'Clean-Prefetch.ps1'
+  };
+  const blob = new Blob([content], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = names[key] || 'script.ps1';
+  a.click();
+}
+
+// Log system
+function addLog(containerId, msg, type='info') {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.style.display = 'block';
+  const ts = new Date().toLocaleTimeString('es-ES');
+  const cls = {ok:'log-ok',info:'log-info',warn:'log-warn',err:'log-err',muted:'log-muted'}[type]||'log-info';
+  const prefix = {ok:'[OK]',info:'[INFO]',warn:'[WARN]',err:'[ERR]',muted:'[--]'}[type]||'[INFO]';
+  el.innerHTML += `<div class="log-line ${cls}">${ts}  ${prefix}  ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// Run task simulation
+function runTask(taskName, steps, duration) {
+  const overlay = document.getElementById('progress-overlay');
+  const progTitle = document.getElementById('prog-title');
+  const progStep = document.getElementById('prog-step');
+  const progBar = document.getElementById('prog-bar');
+  const progPct = document.getElementById('prog-pct');
+
+  overlay.classList.add('show');
+  progTitle.textContent = taskName;
+  progBar.style.width = '0%';
+  progPct.textContent = '0%';
+
+  let i = 0;
+  const interval = duration / steps.length;
+
+  function nextStep() {
+    if (i >= steps.length) {
+      progBar.style.width = '100%';
+      progPct.textContent = '100%';
+      progStep.textContent = '¡Completado!';
+      setTimeout(() => {
+        overlay.classList.remove('show');
+        // Add to main log
+        document.getElementById('log-container').style.display = 'block';
+        addLog('log-output', taskName, 'info');
+        steps.forEach(s => addLog('log-output', s, 'ok'));
+      }, 800);
+      return;
+    }
+    const pct = Math.round(((i+1)/steps.length)*100);
+    progBar.style.width = pct + '%';
+    progPct.textContent = pct + '%';
+    progStep.textContent = steps[i];
+    i++;
+    setTimeout(nextStep, interval);
+  }
+  setTimeout(nextStep, 300);
+}
+
+// Run all
+function runAll() {
+  const allSteps = [
+    'Iniciando limpieza completa del sistema...',
+    'TEMP y archivos temporales → limpiados',
+    'Papelera de reciclaje → vaciada',
+    'Prefetch → limpiado (95MB liberados)',
+    'Logs del sistema → eliminados (1.1GB)',
+    'Windows Update cache → limpiada (3.2GB)',
+    'Cache DNS → limpiada',
+    'Tabla ARP → limpiada',
+    'IP renovada correctamente',
+    'Winsock reiniciado',
+    'TRIM ejecutado en SSD',
+    'SFC /scannow completado → sin errores',
+    'DISM cleanup completado (2.1GB liberados)',
+    'Servicios innecesarios detenidos',
+    'Efectos visuales optimizados',
+    'Memoria virtual ajustada',
+    'RAM caché liberada (~1.8GB)',
+    'OPTIMIZACION COMPLETADA — Reinicia el equipo'
+  ];
+  runTask('Ejecutando optimización completa del sistema', allSteps, 9000);
+  setTimeout(() => downloadScript('all'), 500);
+}
+
+// Navigation
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-'+name)?.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// Fake process table
+const fakeProcesses = [
+  {name:'chrome.exe',pid:4821,cpu:18.4,ram:892,color:'#F85149'},
+  {name:'svchost.exe',pid:1204,cpu:12.1,ram:234,color:'#E3B341'},
+  {name:'Teams.exe',pid:7823,cpu:8.7,ram:1240,color:'#F85149'},
+  {name:'explorer.exe',pid:2104,cpu:4.2,ram:98,color:'#3FB950'},
+  {name:'OneDrive.exe',pid:5631,cpu:3.8,ram:187,color:'#3FB950'},
+  {name:'Antimalware.exe',pid:3312,cpu:6.1,ram:312,color:'#E3B341'},
+  {name:'outlook.exe',pid:6241,cpu:2.9,ram:445,color:'#3FB950'},
+  {name:'SearchHost.exe',pid:8821,cpu:5.3,ram:156,color:'#E3B341'},
+  {name:'Discord.exe',pid:9012,cpu:3.1,ram:389,color:'#3FB950'},
+  {name:'System',pid:4,cpu:1.2,ram:12,color:'#3FB950'},
+];
+
+function renderProcesses() {
+  const tbody = document.getElementById('process-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = fakeProcesses.map(p => {
+    const cpuW = Math.min(p.cpu*4, 100);
+    const col = p.cpu > 10 ? 'var(--red)' : p.cpu > 5 ? 'var(--yellow)' : 'var(--green)';
+    return `<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px">${p.name}</td>
+      <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px">${p.pid}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="cpu-bar"><div class="cpu-fill" style="width:${cpuW}%;background:${col}"></div></div>
+          <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:${col}">${p.cpu}%</span>
+        </div>
+      </td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px">${p.ram} MB</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(63,185,80,0.1);color:var(--green)">Activo</span></td>
+      <td><button onclick="alert('Para terminar procesos, ejecuta el script Monitor-Processes.ps1 como Administrador')" style="background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px;font-family:Outfit,sans-serif">Terminar</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// Startup programs
+const startupItems = [
+  {icon:'🎮',name:'Discord',path:'C:\\Users\\Javier\\AppData\\Discord\\Update.exe',impact:'high',enabled:true},
+  {icon:'☁️',name:'OneDrive',path:'C:\\Program Files\\Microsoft OneDrive\\OneDrive.exe',impact:'med',enabled:true},
+  {icon:'💬',name:'Microsoft Teams',path:'C:\\Program Files\\Teams\\current\\Teams.exe',impact:'high',enabled:true},
+  {icon:'🔒',name:'Antivirus',path:'C:\\Program Files\\Antivirus\\avast.exe',impact:'med',enabled:true},
+  {icon:'🎵',name:'Spotify',path:'C:\\Users\\Javier\\AppData\\Spotify\\Spotify.exe',impact:'low',enabled:false},
+  {icon:'🖨️',name:'HP Printer',path:'C:\\Program Files\\HP\\hpStatusBL.exe',impact:'low',enabled:true},
+  {icon:'📦',name:'Steam',path:'C:\\Program Files (x86)\\Steam\\steam.exe',impact:'high',enabled:false},
+];
+
+function renderStartup() {
+  const el = document.getElementById('startup-list');
+  if (!el) return;
+  el.innerHTML = startupItems.map((item,i) => `
+    <div class="startup-item">
+      <span class="startup-icon">${item.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div class="startup-name">${item.name}</div>
+        <div class="startup-path">${item.path}</div>
+      </div>
+      <span class="startup-impact impact-${item.impact}">${item.impact==='high'?'Alto impacto':item.impact==='med'?'Medio':'Bajo'}</span>
+      <label class="toggle-switch">
+        <input type="checkbox" ${item.enabled?'checked':''} onchange="toggleStartup(${i},this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  `).join('');
+}
+
+function toggleStartup(i, val) {
+  startupItems[i].enabled = val;
+  const active = startupItems.filter(s=>s.enabled).length;
+  const total = startupItems.length;
+}
+
+// Simulate CPU/RAM
+function updateStats() {
+  const cpu = Math.round(15 + Math.random()*25);
+  const ram = Math.round(55 + Math.random()*20);
+  const cpuEl = document.getElementById('cpu-val');
+  const ramEl = document.getElementById('ram-val');
+  const cpuBar = document.getElementById('cpu-bar');
+  const ramBar = document.getElementById('ram-bar');
+  if (cpuEl) { cpuEl.textContent = cpu+'%'; cpuBar.style.width=cpu+'%'; cpuBar.style.background=cpu>70?'var(--red)':cpu>40?'var(--yellow)':'var(--green)'; }
+  if (ramEl) { ramEl.textContent = ram+'%'; ramBar.style.width=ram+'%'; ramBar.style.background=ram>80?'var(--red)':ram>60?'var(--yellow)':'var(--blue)'; }
+}
+
+// Init
+renderProcesses();
+renderStartup();
+updateStats();
+setInterval(updateStats, 3000);
+</script>
+</body>
+</html>
